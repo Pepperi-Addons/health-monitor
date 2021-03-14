@@ -1,0 +1,69 @@
+<!-- <main> -->
+    <div class="plugin-page-container" id="top">
+        <div class="header-content">
+            <div class="content pep-border-bottom">
+                <div class="left-container spacing-element-negative pull-left flip">
+                    <div class="spacing-element title">
+                        {{ 'Health_Monitor_Settings_Title' | translate }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="content">
+                <div class="left-container body-sm spacing-element-negative pull-left flip" style="display: contents;">
+                    <div class="spacing-element">
+                        {{ 'Health_Monitor_Settings_Description' | translate }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="plugin-page-container" id="list">
+        <div class="header-content">
+            <div class="content pep-border-bottom">
+                <div class="left-container spacing-element-negative pull-left flip">
+                    <div class="pull-left flip ng-tns-c36-49 ng-star-inserted">
+                        <div class="list-actions ng-tns-c36-49 spacing-element ng-star-inserted">
+                            <button mat-icon-button [matMenuTriggerFor]="menu" #editBtn mat-button class="pep-button icon-button md strong" pepMenuBlur>
+                                <mat-icon>
+                                    <pep-icon name="system_edit"></pep-icon>
+                                </mat-icon>
+                            </button>
+                            <mat-menu #menu="matMenu" >
+                                <ng-container *ngFor="let action of menuActions">
+                                    <button mat-menu-item [disabled]="disableActions" (click)="onMenuItemClicked(action)">{{ action.value }}</button>
+                                </ng-container>
+                            </mat-menu>
+                            
+                        </div>
+                    </div>
+                    <div class="spacing-element title">
+                        {{ 'Health_Monitor_Settings_Alerts' | translate }}
+                    </div>
+                </div>
+                <div class="right-container spacing-element-negative pull-right flip">
+                </div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="content">
+                <div class="list-container" #listContainer>
+                    <pep-list
+                        [firstFieldAsLink]="false"
+                        [isReport]="true"
+                        [supportSorting]="false"
+                        [supportResizing]="false"
+                        [selectionTypeForActions]="'single'"
+                        [noDataFoundMsg]="'No data'"
+                        [parentScroll]="listContainer"
+                        (listChange)="onListChange($event)"
+                        (fieldClick)="onCustomizeFieldClick($event)"
+                        (selectedItemsChange)="selectedRowsChanged($event)">
+                    </pep-list>
+                </div>
+    
+            </div>
+        </div>
+    </div>
+    

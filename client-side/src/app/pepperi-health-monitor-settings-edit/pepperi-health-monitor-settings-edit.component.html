@@ -1,0 +1,49 @@
+<!-- <main> -->
+    <div class="plugin-page-container">
+        <div class="header-content">
+            <div class="content pep-border-bottom">
+                <div class="left-container spacing-element-negative pull-left flip">
+                    <div class="spacing-element title">
+                        {{ 'Edit_Alert_Title' | translate }}
+                    </div>
+                </div>
+                <div class="right-container spacing-element-negative pull-right flip">
+                    <div class="menu spacing-element pull-right flip">
+                        <button mat-button class="pep-button weak md spacing-element" (click)="onBack()">
+                            {{ 'Edit_Alert_Back' | translate }}
+                        </button>
+                        <button mat-button class="pep-button strong md spacing-element" (click)="onSave()">
+                            {{ 'Edit_Alert_Save' | translate }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-content ">
+            <div class="content" style="width: 50%;" [ngStyle]="{ visibility: typeData ? 'visible':'hidden'}">
+<!--                 <pep-textbox [key]="'Email'" [label]="'Send email to'" [placeholder]="'place holder'" [xAlignment]="'left'"
+                    [value]="typeData.Email" (valueChanged)="onValueChanged($event)">
+                </pep-textbox> -->
+                <pep-textbox [key]="'Webhook'" [label]="'Call webhook'" [placeholder]="'place holder'" [xAlignment]="'left'"
+                    [value]="typeData?.Webhook" [formattedValue]="typeData?.Webhook" (valueChange)="onValueChanged($event)">
+                </pep-textbox>
+                <pep-select [emptyOption]="false" *ngIf="isSupport" [key]="'Interval'" [label]="'Check interval'" [value]="typeData.Interval" [xAlignment]="'left'"
+                    [options]='[
+                    { "Key": 300000, "Value": "5 minutes" },
+                    { "Key": 600000, "Value": "10 minutes" },
+                    { "Key": 900000, "Value": "15 minutes" },
+                    { "Key": 1200000, "Value": "20 minutes" },
+                    { "Key": 1800000, "Value": "30 minutes" },
+                    { "Key": 3600000, "Value": "1 hour" },
+                    { "Key": 7200000, "Value": "2 hours" },
+                    { "Key": 10800000, "Value": "3 hours" },
+                    { "Key": 14400000, "Value": "4 hours" },
+                    { "Key": 21600000, "Value": "6 hours" },
+                    { "Key": 43200000, "Value": "12 hours" },
+                    { "Key": 86400000, "Value": "24 hours" }
+                    ]' (valueChange)="onValueChanged($event)">
+                </pep-select>
+            </div>
+        </div>
+    </div>
+    

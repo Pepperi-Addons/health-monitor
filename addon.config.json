@@ -1,0 +1,38 @@
+{
+  "AddonUUID": "7e15d4cc-55a7-4128-a9fe-0e877ba90069",
+  "AddonVersion": "1.0.56",
+  "DebugPort": 4400,
+  "WebappBaseUrl": "https://app.sandbox.pepperi.com",
+  "DefaultEditor": "main",
+  "Endpoints": [
+    "installation.ts",
+    "api.ts"
+  ],
+  "Editors": [
+    "main"
+  ],
+  "Assets": [
+    "en.json",
+    "en.ngx-lib.json",
+    "he.json"
+  ],
+  "PublishConfig": {
+    "ClientStack": "ng10",
+    "Editors": [
+      {
+        "ParentPackageName": "Health Monitor",
+        "PackageName": "health-monitor-settings",
+        "Description": "Health Monitor Settings"
+      },
+      {
+        "ParentPackageName": "Health Monitor",
+        "PackageName": "health-monitor-dashboard",
+        "Description": "Health Monitor Dashboard"
+      }
+    ],
+    "Dependencies": {
+      "webapp": "16.55.42",
+      "papi": "9.5.368"
+    }
+  }
+}
