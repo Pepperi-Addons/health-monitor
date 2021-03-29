@@ -782,6 +782,19 @@ async function ReportErrorCloudWatch(distributor, errorCode, type , innerMessage
     return error;
 }
 
+/*export async function ReportErrorTeamsDriver(client: Client, request: Request){
+    const service = new MyService(client);
+    //const environmant = 'sandbox';//jwtDecode(service.client.OAuthAccessToken)["pepperi.datacenter"];
+    const environmant = 'production';
+    const distributor = await GetDistributor(service);
+    const errorCode = "SYNC-CALL-FAILED";
+    //const errorCode = "SYNC-SUCCESS";
+    const type = "JOB-EXECUTION-FAILED";
+    const innerMessage = "Test by Amir F.";
+
+    ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage);
+}*/
+
 async function ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage="") {
     let url = '';
     const body = {
@@ -814,18 +827,23 @@ async function ReportErrorTeams(environmant, distributor, errorCode, type, inner
         }],
     }
 
+    // Changed urls to use new configuration for Teams.
     if (environmant=='sandbox'){
         if (errorCode=='SYNC-SUCCESS') //green icon
-            url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
-            url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/e5f4ab775d0147ecbb7f0f6bdf70aa0b/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/e5f4ab775d0147ecbb7f0f6bdf70aa0b/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/e5f4ab775d0147ecbb7f0f6bdf70aa0b/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         }
     }
     else{
         if (errorCode=='SYNC-SUCCESS') //green icon
-            url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
-            url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/0db0e56f12044634937712db79f704e1/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/0db0e56f12044634937712db79f704e1/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/0db0e56f12044634937712db79f704e1/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         }
     }
 
