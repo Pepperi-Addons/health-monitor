@@ -4,16 +4,15 @@ The return object format MUST contain the field 'success':
 {success:true}
 
 If the result of your code is 'false' then return:
-{success:false, erroeMessage:{the reason why it is false}}
+{success:false, errorMessage:{the reason why it is false}}
 The erroeMessage is importent! it will be written in the audit log and help the user to understand what happen
 */
-import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
+import { PapiClient, CodeJob, AddonDataScheme } from "@pepperi-addons/papi-sdk";
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 
 exports.install = async (client: Client, request: Request) => {
     try {
-
         let success = true;
         let errorMessage = '';
         let resultObject = {};
@@ -21,6 +20,7 @@ exports.install = async (client: Client, request: Request) => {
         let successJobLimitReached = true;
         let successJobExecutionFailed = true;
         let successAddonLimitReached = true;
+        let successDailyAddonUsage = true
 
         const papiClient = new PapiClient({
             baseURL: client.BaseURL,
@@ -29,7 +29,6 @@ exports.install = async (client: Client, request: Request) => {
         });
 
         // install SyncFailed test
-        
         let retValSyncFailed = await InstallSyncFailed(client, papiClient);
         successSyncFailed = retValSyncFailed.success;
         errorMessage = "SyncFailed Test installation failed on: " + retValSyncFailed.errorMessage;
@@ -70,8 +69,18 @@ exports.install = async (client: Client, request: Request) => {
             return retValJobExecutionFailed;
         }
         console.log('JobExecutionFailed codejob installed succeeded.');
-        
 
+        // install DailyAddonUsage codejob
+        let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
+        successDailyAddonUsage = retValDailyAddonUsage.success;
+        errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
+        if (!successDailyAddonUsage){
+            console.error(errorMessage);
+            return retValDailyAddonUsage;
+        }
+        console.log('DailyAddonUsage codejob installed succeeded.');
+        
+        
         // add all needed default data to the additinal data
         let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         let data = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
@@ -156,6 +165,23 @@ exports.uninstall = async (client: Client, request: Request) => {
         }
         console.log('JobExecutionFailed codejob unschedule succeeded.');
 
+        // unschedule DailyAddonUsage
+        let dailyAddonUsageCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'DailyAddonUsageCodeJobUUID');
+        if(dailyAddonUsageCodeJobUUID != '') {
+            await papiClient.codeJobs.upsert({
+                UUID:dailyAddonUsageCodeJobUUID,
+                CodeJobName: "DailyAddonUsage",
+                IsScheduled: false,
+                CodeJobIsHidden:true
+            });
+        }
+        var headersADAL = {
+            "X-Pepperi-OwnerID": client.AddonUUID,
+            "X-Pepperi-SecretKey": client.AddonSecretKey
+        }
+        const responseDailyAddonUsageTable = await papiClient.post('/addons/data/schemes/DailyAddonUsage/purge',null, headersADAL);
+        console.log('DailyAddonUsage codejob unschedule succeeded.');
+
         console.log('HealthMonitorAddon uninstalled succeeded.');
         return {
             success:true,
@@ -183,24 +209,45 @@ exports.upgrade = async (client: Client, request: Request) => {
         addonUUID: client.AddonUUID
     });
 
-    // add to AdditionalData data.SyncFailed.MapDataID - from version 1.0.56
-    let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-    const additionalData = addon.AdditionalData? addon.AdditionalData : "";
-    let data = JSON.parse(additionalData);
-    if (!data.SyncFailed.MapDataID){
-        const udtResponse = await papiClient.userDefinedTables.iter({ where: "MapDataExternalID='PepperiHealthMonitor'" }).toArray();
-        data.SyncFailed.MapDataID = udtResponse[0].InternalID;
-        addon.AdditionalData = JSON.stringify(data);
-        const response = await papiClient.addons.installedAddons.upsert(addon);
-    }
-    ////
+    try {
+        // add to AdditionalData data.SyncFailed.MapDataID - from version 1.0.56
+        let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
+        const additionalData = addon.AdditionalData? addon.AdditionalData : "";
+        let data = JSON.parse(additionalData);
+        if (!data.SyncFailed.MapDataID){
+            const udtResponse = await papiClient.userDefinedTables.iter({ where: "MapDataExternalID='PepperiHealthMonitor'" }).toArray();
+            data.SyncFailed.MapDataID = udtResponse[0].InternalID;
+            addon.AdditionalData = JSON.stringify(data);
+            const response = await papiClient.addons.installedAddons.upsert(addon);
+        }
+        //
 
-    console.log('HealthMonitorAddon upgrade succeeded.');
-    return {
-        success: success,
-        errorMessage: errorMessage,        
-        resultObject: resultObject
-    };
+        // install DailyAddonUsage if not installed yet from version 1.0.58
+        if (!data.DailyAddonUsageCodeJobUUID){
+            // install DailyAddonUsage codejob
+            let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
+            let successDailyAddonUsage = retValDailyAddonUsage.success;
+            errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
+            if (!successDailyAddonUsage){
+                console.error(errorMessage);
+                return retValDailyAddonUsage;
+            }
+            console.log('DailyAddonUsage codejob installed succeeded.');
+        }
+        //
+        
+        console.log('HealthMonitorAddon upgrade succeeded.');
+        return {
+            success: success,       
+            resultObject: resultObject
+        };
+    }
+    catch (err){
+        return {
+            success: false,
+            errorMessage: ('message' in err) ? err.message : 'Failed to upgrade HealthMonitor Addon'
+        };
+    }
 };
 
 exports.downgrade = async (client: Client, request: Request) => {
@@ -303,6 +350,12 @@ function GetJobExecutionCronExpression(token){
     return rand +"-59/60 8 * * *";
 }
 
+function GetDailyAddonUsageCronExpression(token){
+    // rand is integet between 0-4 included.
+    const rand = (jwtDecode(token)['pepperi.distributorid'])%59;
+    return rand +"-59/60 5 * * *";
+}
+
 async function InstallSyncFailed(client, papiClient){
     const mapDataMetaData ={
         TableID:"PepperiHealthMonitor",
@@ -350,6 +403,24 @@ async function InstallJobExecutionFailed(client, papiClient){
     let codeJob = await CreateAddonCodeJob(client, papiClient, "JobExecutionFailed Test", "JobExecutionFailed Test for HealthMonitor Addon.", "api", 
     "job_execution_failed", GetJobExecutionCronExpression(client.OAuthAccessToken));
     let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'JobExecutionFailedCodeJobUUID');
+    return retVal;
+}
+
+async function InstallDailyAddonUsage(client, papiClient){
+    let codeJob = await CreateAddonCodeJob(client, papiClient, "DailyAddonUsage", "DailyAddonUsage for HealthMonitor Addon.", "addon-usage", 
+    "daily_addon_usage", GetDailyAddonUsageCronExpression(client.OAuthAccessToken));
+    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'DailyAddonUsageCodeJobUUID');
+    
+    // add table to ADAL
+    const bodyDailyAddonUsageTable:AddonDataScheme = {
+        Name: 'DailyAddonUsage',
+        Type: 'meta_data'
+    };
+    const headersADAL = {
+        "X-Pepperi-OwnerID": client.AddonUUID,
+        "X-Pepperi-SecretKey": client.AddonSecretKey
+    }
+    const responseDailyAddonUsageTable = await papiClient.post('/addons/data/schemes', bodyDailyAddonUsageTable, headersADAL);
     return retVal;
 }
 

@@ -27,7 +27,8 @@
         "typescript": "~3.8.0"
     },
     "dependencies": {
-        "@pepperi-addons/debug-server": "0.0.24",
-        "@pepperi-addons/papi-sdk": "^1.17.3"
+        "@pepperi-addons/debug-server": "0.0.30",
+        "@pepperi-addons/papi-sdk": "^1.19.3",
+        "aws-sdk": "^2.884.0"
     }
 }
