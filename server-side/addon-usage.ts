@@ -32,10 +32,7 @@ export async function daily_addon_usage(client: Client, request: Request) {
         console.log('HealthMonitorAddon ended daily addon usage');
 
         // check conditions for problematic use of lambdas
-        if (problem){
 
-        }
-        
         return;
     }
     catch (err) {
