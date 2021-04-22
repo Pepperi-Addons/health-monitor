@@ -8,43 +8,19 @@ export async function daily_addon_usage(client: Client, request: Request) {
     console.log('HealthMonitorAddon start daily addon usage');
     try {
         const service = new MyService(client);
-        const distributorUUID = jwtDecode(client.OAuthAccessToken)["pepperi.distributoruuid"];
         const now = Date.now();
-        const AWS = require('aws-sdk');
-        const cwl = new AWS.CloudWatchLogs();
-        
-        // create query
-        const logGroupsParams = {};
-        const logGroups = (await cwl.describeLogGroups(logGroupsParams).promise()).logGroups;
-        const relevantLogGroups = logGroups.filter(x=> x.logGroupName.includes('Addon') && x.logGroupName.includes('Execute')).map(x=> x.logGroupName);
         const startTime = new Date(now-24*3600*1000).setHours(0,0,0,0);
         const endTime = new Date(now).setHours(0,0,0,0);
 
-        const startQueryParams = {
-            startTime: startTime,
-            endTime: endTime, 
-            queryString: `fields @timestamp
-            | sort @timestamp desc
-            | filter Duration>0 and DistributorUUID='${distributorUUID}'
-            | stats count(*),sum(Duration) by AddonUUID`,
-            logGroupNames: relevantLogGroups
-        };
-        const queryId = (await cwl.startQuery(startQueryParams).promise()).queryId;
-
-        // get query results
-        const queryResultsParams = {
-            queryId: queryId
-        };
-
-        let queryResults = await cwl.getQueryResults(queryResultsParams).promise();
-        while (queryResults.status != 'Complete'){
-            await sleep(1000);
-            queryResults = await cwl.getQueryResults(queryResultsParams).promise();
+        const cloudWatchBody = {
+            StartDateTime: startTime,
+            EndDateTime: endTime
         }
+        const cloudWatchResult = await service.papiClient.post("/addons/api/async/00000000-0000-0000-0000-000000000a91/api/getAddonsUsageFromCWL", cloudWatchBody);
 
         // upload to adal
         const addonsUsage = {};
-        queryResults.results.forEach(result => {
+        cloudWatchResult.forEach(result => {
             addonsUsage[result[0].value]= {Count:result[1].value, Duration:result[2].value};
         });
         const nowDate = new Date(now);
@@ -54,6 +30,12 @@ export async function daily_addon_usage(client: Client, request: Request) {
         };
         const dailyAddonUsageResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('DailyAddonUsage').upsert(dailyAddonUsageBody);
         console.log('HealthMonitorAddon ended daily addon usage');
+
+        // check conditions for problematic use of lambdas
+        if (problem){
+
+        }
+        
         return;
     }
     catch (err) {
