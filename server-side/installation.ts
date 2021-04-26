@@ -49,17 +49,6 @@ exports.install = async (client: Client, request: Request) => {
         }
         console.log('JobLimitReached codejob installed succeeded.');
 
-        // install AddonLimitReached test
-        let retValAddonLimitReached = await InstallAddonLimitReached(client, papiClient);
-        successAddonLimitReached = retValAddonLimitReached.success;
-        errorMessage = "AddonLimitReached Test installation failed on: " + retValAddonLimitReached.errorMessage;
-        if (!successAddonLimitReached){
-            console.error(errorMessage);
-            return retValAddonLimitReached;
-        }
-        console.log('AddonLimitReached codejob installed succeeded.');
-
-
         // install JobExecutionFailed test
         let retValJobExecutionFailed = await InstallJobExecutionFailed(client, papiClient);
         successJobExecutionFailed = retValJobExecutionFailed.success;
@@ -71,14 +60,14 @@ exports.install = async (client: Client, request: Request) => {
         console.log('JobExecutionFailed codejob installed succeeded.');
 
         // install DailyAddonUsage codejob
-/*         let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
+        let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
         successDailyAddonUsage = retValDailyAddonUsage.success;
         errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
         if (!successDailyAddonUsage){
             console.error(errorMessage);
             return retValDailyAddonUsage;
         }
-        console.log('DailyAddonUsage codejob installed succeeded.'); */
+        console.log('DailyAddonUsage codejob installed succeeded.');
         
         
         // add all needed default data to the additinal data
@@ -166,7 +155,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         console.log('JobExecutionFailed codejob unschedule succeeded.');
 
         // unschedule DailyAddonUsage
-/*         let dailyAddonUsageCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'DailyAddonUsageCodeJobUUID');
+        let dailyAddonUsageCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'DailyAddonUsageCodeJobUUID');
         if(dailyAddonUsageCodeJobUUID != '') {
             await papiClient.codeJobs.upsert({
                 UUID:dailyAddonUsageCodeJobUUID,
@@ -180,7 +169,7 @@ exports.uninstall = async (client: Client, request: Request) => {
             "X-Pepperi-SecretKey": client.AddonSecretKey
         }
         const responseDailyAddonUsageTable = await papiClient.post('/addons/data/schemes/DailyAddonUsage/purge',null, headersADAL);
-        console.log('DailyAddonUsage codejob unschedule succeeded.'); */
+        console.log('DailyAddonUsage codejob unschedule succeeded.');
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
         return {
@@ -220,10 +209,10 @@ exports.upgrade = async (client: Client, request: Request) => {
             addon.AdditionalData = JSON.stringify(data);
             const response = await papiClient.addons.installedAddons.upsert(addon);
         }
-        //
-
+        
+        /////////////////////////////////////////////////////////////////////
         // install DailyAddonUsage if not installed yet from version 1.0.58
-/*         if (!data.DailyAddonUsageCodeJobUUID){
+        if (!data.DailyAddonUsageCodeJobUUID){
             // install DailyAddonUsage codejob
             let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
             let successDailyAddonUsage = retValDailyAddonUsage.success;
@@ -233,8 +222,26 @@ exports.upgrade = async (client: Client, request: Request) => {
                 return retValDailyAddonUsage;
             }
             console.log('DailyAddonUsage codejob installed succeeded.');
-        } */
-        //
+        } 
+
+        // unschedule AddonLimitReached test
+        if (data.AddonLimitReachedCodeJobUUID){
+            let addonLimitReachedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'AddonLimitReachedCodeJobUUID');
+            if(addonLimitReachedCodeJobUUID != '') {
+                await papiClient.codeJobs.upsert({
+                    UUID:addonLimitReachedCodeJobUUID,
+                    CodeJobName: "AddonLimitReached Test",
+                    IsScheduled: false,
+                    CodeJobIsHidden:true
+                });
+            }
+            delete data ['AddonLimitReachedCodeJobUUID'];
+            addon.AdditionalData = JSON.stringify(data);
+            const response = await papiClient.addons.installedAddons.upsert(addon);
+            console.log('AddonLimitReached codejob unschedule succeeded.');
+        }
+        /////////////////////////////////////////////////////////////////////
+
         
         console.log('HealthMonitorAddon upgrade succeeded.');
         return {

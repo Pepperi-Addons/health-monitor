@@ -723,7 +723,7 @@ export async function JobExecutionFailedTest(service) {
 
             if (report.length==0){
                 const reportMessage= "No new errors were found since " + intervalUTCDate + ".";
-                ReportErrorCloudWatch(await GetDistributor(service), "jOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+                ReportErrorCloudWatch(await GetDistributor(service), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
                 console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
                 return {
                     success:true, 
