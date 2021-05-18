@@ -4,6 +4,7 @@ import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
+import { Service } from 'aws-sdk';
 
 // add functions here
 // this function will run on the 'api/foo' endpoint
@@ -24,30 +25,28 @@ const errors = {
     "PASSED-ADDON-LIMIT":{"Message":'Distributor passed the addon limit', "Color":"FF0000"},
     "PASSED-JOB-LIMIT":{"Message":'Distributor passed the job limit', "Color":"FF0000"},
     "TIMEOUT-GET-UDT":{"Message":'Get udt call timeout', "Color":"FF0000"},
-    "TIMEOUT-SYNC":{"Message":'Sync call timeout', "Color":"FF0000"}
+    "TIMEOUT-SYNC":{"Message":'Sync call timeout', "Color":"FF0000"},
+    "TIMEOUT-SYNC-FAILED-TEST":{"Message":'sync_failed test timeout', "Color":"FF0000"}
 };
 
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
-    
+    let timeout = setTimeout(async function() { 
+        //return 'TIMEOUT-GET-UDT';
+        await StatusUpdate(service, false, false, 'TIMEOUT-SYNC-FAILED-TEST');
+        },270000); //4.5 minutes
+
     const service = new MyService(client);
     let errorCode = '';
     let success = false;
     let errorMessage ='';
     let lastStatus;
 
-    //if in the last 2 minutes were successful sync dont perform test
-    const twoMinutesAgo = new Date(Date.now() - 150 * 1000).toISOString();
-    const currentSync = await service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and ModificationDateTime>'"+twoMinutesAgo+"' and Status.ID=1");
-    if (currentSync.length>0){
-        success = true;
-        errorMessage = "There was a successful sync at the last 150 seconds."
-        console.log('There was a successful sync at the last 150 seconds.');
-        return {
-            success: success,
-            errorMessage: errorMessage,
-        };
+    // validate before starting the test
+    const passedValidation = validateBeforeTest(service);
+    if (!passedValidation){
+        return;
     }
     
     try {
@@ -64,11 +63,13 @@ export async function sync_failed(client: Client, request: Request) {
         errorMessage = await StatusUpdate(service, lastStatus, success, errorCode);
     }
     catch (err) {
+        clearTimeout(timeout);
         success = false;
         const innerError = ('stack' in err) ? err.stack : 'Unknown Error Occured';
         errorMessage = await StatusUpdate(service, false, success, 'UNKNOWN-ERROR',innerError);
     }
 
+    clearTimeout(timeout);
     return {
         success: success,
         errorMessage: errorMessage,
@@ -517,9 +518,9 @@ export async function SyncFailedTest(service) {
     try{
         console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
         timeout = setTimeout(async function() { 
-            return 'TIMEOUT-SYNC';
-            //await StatusUpdate(service, false, false, 'TIMEOUT-SYNC');
-            },180000);
+            //return 'TIMEOUT-SYNC';
+            await StatusUpdate(service, false, false, 'TIMEOUT-SYNC');
+            },120000);
         start = Date.now();
         syncResponse = await service.papiClient.post('/application/sync', body);
 
@@ -546,8 +547,8 @@ export async function SyncFailedTest(service) {
         try{
             console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
             timeout = setTimeout(async function() { 
-                return 'TIMEOUT-GET-UDT';
-                //await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT');
+                //return 'TIMEOUT-GET-UDT';
+                await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT');
                 },30000);
             start = Date.now();
             udtResponse = await service.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -754,13 +755,28 @@ export async function JobExecutionFailedTest(service) {
 
 //#region private functions
 
+async function validateBeforeTest(service) {
+    //check if in the last 2 minutes were successful sync dont perform test
+    const twoMinutesAgo = new Date(Date.now() - 150 * 1000).toISOString();
+    const currentSync = await service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and ModificationDateTime>'"+twoMinutesAgo+"' and Status.ID=1");
+    if (currentSync.length>0){
+        console.log('There was a successful sync at the last 150 seconds.');
+        return false;
+    }
+
+    // check if Nucleus is loaded
+
+
+    return true;
+}
+
 async function ReportError(service, distributor, errorCode, type, innerMessage="") {
     const environmant = jwtDecode(service.client.OAuthAccessToken)["pepperi.datacenter"];
     // report error to log
     const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage);
 
     // report error to teams on System Status chanel
-    ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage);
+    ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage);
 
     // report error to webhook
     ReportErrorWebhook(service, errorCode, type, innerMessage);
@@ -795,9 +811,9 @@ async function ReportErrorCloudWatch(distributor, errorCode, type , innerMessage
     ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage);
 }*/
 
-async function ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage="") {
+async function ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage="") {
     let url = '';
-    const body = {
+    let body = {
         themeColor: errors[errorCode]["Color"],
         Summary: distributor.InternalID + " - "+distributor.Name,
         sections: [{
@@ -825,24 +841,60 @@ async function ReportErrorTeams(environmant, distributor, errorCode, type, inner
             }],
             "markdown": true
         }],
+    };
+    let unite = false;
+
+    if (type == "SYNC-FAILED"){
+        const alertBody = {
+            DistributorID: distributor.InternalID,
+            ErrorCode:errorCode
+        };
+        const alertLogicResponse = await service.papiClient.post('/var/addons/health_monitor/alerts', alertBody);
+        if (alertLogicResponse.unite){
+            if (alertLogicResponse.alert){
+                unite =true;
+                body = {
+                    themeColor: errors[errorCode]["Color"]=="00FF00"? "FFFF00": errors[errorCode]["Color"],
+                    Summary: `Errors on ${alertLogicResponse.count} distributors`,
+                    sections: [{
+                        facts: [{
+                            name: "Distributors",
+                            value: alertLogicResponse.count.toString()
+                        },{
+                            name: "Code",
+                            value: alertLogicResponse.errorCodes.toString()
+                        },{
+                            name: "Type",
+                            value: type
+                        }],
+                        "markdown": true
+                    }],
+                };
+            }
+            else{
+                return;
+            }
+        }
     }
 
     // Changed urls to use new configuration for Teams.
     if (environmant=='sandbox'){
-        if (errorCode=='SYNC-SUCCESS') //green icon
-            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
-            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+        if (errorCode=='SYNC-SUCCESS') 
+            if (unite) //yellow icon
+                url = '';
+            else //green icon
+                url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
-            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/e5f4ab775d0147ecbb7f0f6bdf70aa0b/4361420b-8fde-48eb-b62a-0e34fec63f5c';
             url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/e5f4ab775d0147ecbb7f0f6bdf70aa0b/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         }
     }
     else{
-        if (errorCode=='SYNC-SUCCESS') //green icon
-            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
-            url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
+        if (errorCode=='SYNC-SUCCESS') 
+            if (unite) //yellow icon
+                url = '';
+            else //green icon
+                url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
-            //Old configuration: url = 'https://outlook.office.com/webhook/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/0db0e56f12044634937712db79f704e1/4361420b-8fde-48eb-b62a-0e34fec63f5c';
             url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/0db0e56f12044634937712db79f704e1/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         }
     }
@@ -898,10 +950,12 @@ async function ReportErrorWebhook(service, errorCode, type, innerMessage="") {
         }],
     }
 
-    var res = await fetch(url, {
-        method: "POST", 
-        body: JSON.stringify(body)
-    });
+    if (url){
+        var res = await fetch(url, {
+            method: "POST", 
+            body: JSON.stringify(body)
+        });
+    }
 }
 
 function GetDistributorID(service){

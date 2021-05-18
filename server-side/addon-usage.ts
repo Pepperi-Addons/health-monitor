@@ -56,7 +56,7 @@ async function getcloudWatchLogs(service, now){
 }
 
 async function upsertDailyAddonUsageToADAL(client, service, cloudWatchLogs, now) {
-    const nowDate = new Date(now);
+    const nowDate = new Date(now-24*3600*1000);
     const dailyAddonUsageBody= {
         Key: nowDate.toLocaleDateString(),
         AddonsUsage: cloudWatchLogs,
