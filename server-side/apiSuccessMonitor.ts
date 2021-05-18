@@ -51,7 +51,7 @@ export async function collect_data(client: Client, request: Request) {
     const allActivitiesUsersAndBuyersTask = papiClient.allActivities.count({where:"CreationDateTime>'" + lastMonthStringWithoutTime + "'", group_by:"CreatorInternalID"});
 
     const imagesTask = papiClient.images.count({where:'ImageType=1'});
-    const userDefinedTablesLinesTask = papiClient.userDefinedTables.count();
+    const userDefinedTablesLinesTask = papiClient.userDefinedTables.count({include_deleted:false});
 
     // Await all regular tasks
     let actualUsersCount: any = null;
