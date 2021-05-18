@@ -8,7 +8,7 @@
     "installation.ts",
     "api.ts",
     "addon-usage.ts",
-    "apiSuccessMonitor.ts"
+    "api-success-monitor.ts"
   ],
   "Editors": [
     "main"
