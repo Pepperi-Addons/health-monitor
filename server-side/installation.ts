@@ -46,7 +46,7 @@ exports.install = async (client: Client, request: Request) => {
                 Type: "AddonJob",
                 IsScheduled: true,
                 CronExpression: getCronExpression(),
-                AddonPath: "apiSuccessMonitor",
+                AddonPath: "api-success-monitor",
                 FunctionName: "run_collect_data",
                 AddonUUID: client.AddonUUID,
                 NumberOfTries: 30,
