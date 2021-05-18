@@ -12,7 +12,7 @@ export async function run_collect_data(client: Client, request: Request) {
     res_collect_data.Key = new Date(Date.now()).toISOString();
 
     // Insert results to ADAL
-    await papiClient.addons.data.uuid(client.AddonUUID).table(PepperiUsageMonitorTable.Name).upsert(res_collect_data);
+    await papiClient.addons.data.uuid(client.AddonUUID).table(PepperiUsageMonitorTable.Name).upsert(res_collect_data,);
 
     return res_collect_data;
 }
@@ -50,6 +50,9 @@ export async function collect_data(client: Client, request: Request) {
     const lastMonthStringWithoutTime = lastMonthString.split('T')[0] + 'Z';
     const allActivitiesUsersAndBuyersTask = papiClient.allActivities.count({where:"CreationDateTime>'" + lastMonthStringWithoutTime + "'", group_by:"CreatorInternalID"});
 
+    const transactionsTask = papiClient.transactions.count({include_deleted:false});
+    const activitiesTask = papiClient.activities.count({include_deleted:false});
+    const transactionLinesTask = papiClient.transactionLines.count({include_deleted:false});
     const imagesTask = papiClient.images.count({where:'ImageType=1'});
     const userDefinedTablesLinesTask = papiClient.userDefinedTables.count({include_deleted:false});
 
@@ -192,6 +195,30 @@ export async function collect_data(client: Client, request: Request) {
         errors.push({object:'WorkingUsers', error:('message' in error) ? error.message : 'general error'});
     }
 
+    let transactionsCount: any = null;
+    try {
+        transactionsCount = await transactionsTask;
+    }
+    catch (error) {
+        errors.push({object:'Transactions', error:('message' in error) ? error.message : 'general error'});
+    }
+    
+    let activitiesCount: any = null;
+    try {
+        activitiesCount = await activitiesTask;
+    }
+    catch (error) {
+        errors.push({object:'Activities', error:('message' in error) ? error.message : 'general error'});
+    }
+
+    let transactionLinesCount: any = null;
+    try {
+        transactionLinesCount = await transactionLinesTask;
+    }
+    catch (error) {
+        errors.push({object:'TransactionLines', error:('message' in error) ? error.message : 'general error'});
+    }
+
     let imagesCount: any = null;
     try {
         imagesCount = await imagesTask;
@@ -243,7 +270,9 @@ export async function collect_data(client: Client, request: Request) {
     }
 
     result.Data = {
-        NucleusAllActivities: null,
+        NucleusTransactions: transactionsCount,
+        NucleusActivities: activitiesCount,
+        NucleusTransactionLines: transactionLinesCount,
         DatabaseAllActivities: null,
         Images: imagesCount,
         UserDefinedTablesLines: userDefinedTablesLinesCount,
