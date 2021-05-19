@@ -243,7 +243,15 @@ exports.uninstall = async (client: Client, request: Request) => {
     }
 };
 
+async function shouldUpgradePepperiUsageMonitor(papiClient: PapiClient, client: Client): Promise<boolean> {
+    const addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
+    const version = addon?.Version?.split('.').map(item => {return Number(item)}) || [];
+
+    return version.length == 3 && version[0] < 2;
+}
+
 exports.upgrade = async (client: Client, request: Request) => {
+
     let success = true;
     let errorMessage = '';
     let resultObject = {};
@@ -251,8 +259,54 @@ exports.upgrade = async (client: Client, request: Request) => {
     const papiClient = new PapiClient({
         baseURL: client.BaseURL,
         token: client.OAuthAccessToken,
-        addonUUID: client.AddonUUID
+        addonUUID: client.AddonUUID,
+        addonSecretKey: client.AddonSecretKey
     });
+
+    try {
+        if (await shouldUpgradePepperiUsageMonitor(papiClient, client)) {
+            // Install scheme for Pepperi Usage Monitor
+            try {
+                await papiClient.addons.data.schemes.post(PepperiUsageMonitorTable);
+                console.log('PepperiUsageMonitor Table installed successfully.');
+            }
+            catch (err) {
+                return {
+                    success: false,
+                    errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor table failed.',
+                }
+            }
+
+            // Install code job for Pepperi Usage Monitor
+            try {
+                const codeJob: CodeJob = await papiClient.codeJobs.upsert({
+                    CodeJobName: "Pepperi Usage Monitor Addon Code Job",
+                    Description: "Pepperi Usage Monitor",
+                    Type: "AddonJob",
+                    IsScheduled: true,
+                    CronExpression: getCronExpression(),
+                    AddonPath: "api-success-monitor",
+                    FunctionName: "run_collect_data",
+                    AddonUUID: client.AddonUUID,
+                    NumberOfTries: 30,
+                });
+                console.log('PepperiUsageMonitor code job installed successfully.');
+            }
+            catch (err)
+            {
+                return {
+                    success: false,
+                    errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor code job failed.',
+                }
+            }
+        }
+    }
+    catch (err){
+        return {
+            success: false,
+            errorMessage: ('message' in err) ? err.message : 'Failed to upgrade HealthMonitor Addon (Pepperi Usage Monitor)'
+        };
+    }
 
     try {
         // add to AdditionalData data.SyncFailed.MapDataID - from version 1.0.56
