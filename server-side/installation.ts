@@ -18,6 +18,8 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
 
 exports.install = async (client: Client, request: Request) => {
     // Pepperi Usage Monitor
+    client.AddonUUID='7e15d4cc-55a7-4128-a9fe-0e877ba90069';
+    let usageMonitorCodeJob: CodeJob;
     try {
         const papiClient = new PapiClient({
             baseURL: client.BaseURL,
@@ -40,7 +42,7 @@ exports.install = async (client: Client, request: Request) => {
 
         // Install code job for Pepperi Usage Monitor
         try {
-            const codeJob: CodeJob = await papiClient.codeJobs.upsert({
+            usageMonitorCodeJob = await papiClient.codeJobs.upsert({
                 CodeJobName: "Pepperi Usage Monitor Addon Code Job",
                 Description: "Pepperi Usage Monitor",
                 Type: "AddonJob",
@@ -135,7 +137,7 @@ exports.install = async (client: Client, request: Request) => {
         data.SyncFailed = { Type:"Sync failed", Status: true, ErrorCounter:0, MapDataID:mapDataID, Email:"", Webhook:"",Interval:5*60*1000 };
         data.JobLimitReached = {Type:"Job limit reached", LastPercantage:0, Email:"", Webhook:"",Interval:24*60*60*1000};
         data.JobExecutionFailed = {Type:"Job execution failed", Email:"", Webhook:"",Interval:24*60*60*1000};
-
+        data.usageMonitorCodeJobUUID = usageMonitorCodeJob.UUID;
         addon.AdditionalData = JSON.stringify(data);
         await papiClient.addons.installedAddons.upsert(addon);
 
@@ -279,7 +281,7 @@ exports.upgrade = async (client: Client, request: Request) => {
 
             // Install code job for Pepperi Usage Monitor
             try {
-                const codeJob: CodeJob = await papiClient.codeJobs.upsert({
+                const usageMonitorCodeJob: CodeJob = await papiClient.codeJobs.upsert({
                     CodeJobName: "Pepperi Usage Monitor Addon Code Job",
                     Description: "Pepperi Usage Monitor",
                     Type: "AddonJob",
@@ -290,6 +292,12 @@ exports.upgrade = async (client: Client, request: Request) => {
                     AddonUUID: client.AddonUUID,
                     NumberOfTries: 30,
                 });
+                let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
+                const additionalData = addon.AdditionalData? addon.AdditionalData : "";
+                let data = JSON.parse(additionalData);
+                data["UsageMonitorCodeJobUUID"]=usageMonitorCodeJob.UUID;
+                addon.AdditionalData = JSON.stringify(data);
+                const response = await papiClient.addons.installedAddons.upsert(addon);
                 console.log('PepperiUsageMonitor code job installed successfully.');
             }
             catch (err)
