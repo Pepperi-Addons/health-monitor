@@ -229,13 +229,13 @@ exports.upgrade = async (client: Client, request: Request) => {
         let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => {return Number(item)}) || [];
 
-        // upgrade to 2.1 from 2.0 or 1.0 versions
-        if (version.length==3 && ((version[0] < 2) || (version[0] == 2 && version[1] <1))){
+        // upgrade to 2.0 or 1.0 versions
+        if (version.length==3 && version[0] < 2){
             const additionalData = addon.AdditionalData? addon.AdditionalData : "";
             let data = JSON.parse(additionalData);
 
             // install UsageMonitor if not installed yet from version 2.0
-            if (version.length==3 && version[0] < 2){         
+            if (!data.UsageMonitorCodeJobUUID){         
                 let retValUsageMonitor = await InstallUsageMonitor(service);
                 let successUsageMonitor = retValUsageMonitor.success;
                 errorMessage = "DailyAddonUsage codejob installation failed on: " + retValUsageMonitor.errorMessage;
