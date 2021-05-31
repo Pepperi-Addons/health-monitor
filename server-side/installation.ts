@@ -11,7 +11,6 @@ import { PapiClient, CodeJob, AddonDataScheme } from "@pepperi-addons/papi-sdk";
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 import MyService from './my.service';
-import { Service } from "aws-sdk";
 
 
 exports.install = async (client: Client, request: Request) => {
