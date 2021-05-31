@@ -13,22 +13,15 @@ export async function daily_addon_usage(client: Client, request: Request) {
     console.log('HealthMonitorAddon start daily addon usage');
     const service = new MyService(client);
     const distributor = await service.papiClient.get('/distributor');
-    const now = Date.now();
 
     try {
-        // get the daily memory usage per addon from CloudWatch
-        const cloudWatchLogs = await getcloudWatchLogs(service, now);
-        const dailyAddonUsage = await upsertDailyAddonUsageToADAL(client, service, cloudWatchLogs, now);
+        const dailyAddonsUsage = await getDailyAddonUsage(service, client, distributor);
+        const monitorSettings = await updateMonitorSettings(service);
+        const checkMaintenance = await checkMaintenanceWindow(service);
 
-        // check conditions for problematic use of lambdas, create report and alert problems
-        const memoreUsageLimit = 5000000;
-        const dailyReport = await getDailyReport(service, distributor, dailyAddonUsage, memoreUsageLimit); 
-        const monthlyReport = await getMonthlyReport(client, service, distributor, memoreUsageLimit);
-
-        console.log('HealthMonitorAddon ended daily addon usage');
         return {
             success: true, 
-            resultObject: {DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"]}
+            resultObject: dailyAddonsUsage
         };
     }
     catch (err) {
@@ -43,6 +36,22 @@ export async function daily_addon_usage(client: Client, request: Request) {
 };
 
 //#region private methods
+
+async function getDailyAddonUsage(service, client, distributor) {
+    const now = Date.now();
+
+    // get the daily memory usage per addon from CloudWatch
+    const cloudWatchLogs = await getcloudWatchLogs(service, now);
+    const dailyAddonUsage = await upsertDailyAddonUsageToADAL(client, service, cloudWatchLogs, now);
+
+    // check conditions for problematic use of lambdas, create report and alert problems
+    const memoreUsageLimit = 5000000;
+    const dailyReport = await getDailyReport(service, distributor, dailyAddonUsage, memoreUsageLimit); 
+    const monthlyReport = await getMonthlyReport(client, service, distributor, memoreUsageLimit);
+
+    console.log('HealthMonitorAddon ended daily addon usage');
+    return {DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"]};
+}
 
 async function getcloudWatchLogs(service, now){
     const startTime = new Date(now-24*3600*1000).setHours(0,0,0,0);
@@ -167,6 +176,110 @@ async function reportError(service, distributor, errorCode, type, innerMessage) 
         method: "POST", 
         body: JSON.stringify(body)
     });
+}
+
+async function checkMaintenanceWindow(service) {
+    let success = false;
+
+    try{
+        const maintenance = await service.papiClient.metaData.flags.name('Maintenance').get();
+        const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
+        let monitorSettings = await service.getMonitorSettings();
+        const seconds = monitorSettings.SyncFailed.Interval/1000;
+        const minutes = seconds/60;
+        const hours = minutes/60;
+        let updatedCronExpression;
+
+        if (hours>1){
+            updatedCronExpression = await getCronExpression(service.client.OAuthAccessToken, maintenanceWindowHour, false, true, hours);
+        }
+        else{
+            updatedCronExpression = await getCronExpression(service.client.OAuthAccessToken, maintenanceWindowHour, true, false, minutes ); 
+        }
+
+        const codeJob = await service.papiClient.get('/code_jobs/'+monitorSettings.SyncFailedCodeJobUUID);
+        const previosCronExpression = codeJob.CronExpression;
+        if (updatedCronExpression!=previosCronExpression){
+            await updateCodeJobCronExpression(service.papiClient, codeJob, updatedCronExpression);
+        }
+        success = true;
+        return success;
+    }
+    catch (err){
+        return success;
+    }
+}
+
+async function updateMonitorSettings(service) {
+    let distributorData = await service.papiClient.get('/distributor');
+    const machineData = await service.papiClient.get('/distributor/machine');
+    const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+    let monitorSettings = await service.getMonitorSettings();
+    monitorSettings.Name = distributorData.Name;
+    monitorSettings.MachineAndPort = machineData.Machine + ":" + machineData.Port;
+    monitorSettings.MonitorLevel = (monitorLevel ==false) ? 4 : monitorLevel;
+
+    const response = await service.setMonitorSettings(monitorSettings);
+    return response;
+}
+
+async function getCronExpression(token, maintenanceWindowHour, minutes=true, hours=false, interval=5, dailyTime=6) {
+    let minute;
+    let hour;
+
+    if (minutes){
+        // rand is integet between 0-{value-1} included.
+        const rand = (jwtDecode(token)['pepperi.distributorid'])%interval;
+        minute = rand +"-59/"+interval;
+        switch(maintenanceWindowHour) {
+            case 0:
+                hour = "2-22";
+                break;
+            case 1:
+                hour = "3-23";
+                break;
+            case 2:
+                hour = "0,4-23";
+                break;
+            case 21:
+                hour = "0-19,23";
+                break;
+            case 22:
+                hour = "0-20";
+                break;
+            case 23:
+                hour = "1-21";
+                break;
+            default:
+                hour = "0-"+(maintenanceWindowHour-2)+','+(maintenanceWindowHour+2)+"-23";
+        }
+    }
+    else if (hours){
+        // rand is integet between 0-59 included.
+        const rand = (jwtDecode(token)['pepperi.distributorid'])%60;
+        minute = rand +"-59/60";
+        
+        let i = dailyTime;
+        while (i>=interval){
+            i=i-interval;
+        }
+        hour =i.toString();
+        i=i+interval;
+        while (i<24){
+            hour = hour + "," +i;
+            i=i+interval;
+        }
+    }
+    return minute + " " + hour +" * * *";
+}
+
+async function updateCodeJobCronExpression(papiClient, codeJob, updatedCronExpression) {
+    const response = await papiClient.codeJobs.upsert({
+        UUID: codeJob.UUID,
+        CronExpression: updatedCronExpression,
+        IsScheduled: true
+    });
+    return response;
 }
 
 //#endregion

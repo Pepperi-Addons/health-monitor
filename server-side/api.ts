@@ -3,22 +3,18 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
-import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
-import { Service } from 'aws-sdk';
 
-// add functions here
-// this function will run on the 'api/foo' endpoint
-// the real function is runnning on another typescript file
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 };
 const errors = {
-    "SYNC-SUCCESS":{"Message":'SyncFailed test succeeded', "Color":"00FF00"},
+    "SUCCESS":{"Message":'SyncFailed test succeeded', "Color":"00FF00"},
     "JOB-EXECUTION-REPORT":{"Message":'JobExecutionFailed test finished', "Color":"990000"},
     "JOB-LIMIT-SUCCESS":{"Message":'JobLimitReached test finished', "Color":"00FF00"},
     "TEST-MESSAGE":{"Message":'test message', "Color":"00FF00"},
     "UNKNOWN-ERROR":{"Message":'Unknown error occured, contact rnd to fix this', "Color":"990000"},
     "GET-UDT-FAILED":{"Message":'Get udt failed, Pls confirm NUC is not available and recycle if needed', "Color":"FF0000"},
+    "GET-ADAL-FAILED":{"Message":'Get adal by key failed, Pls confirm NUC is not available and recycle if needed', "Color":"FF0000"},
     "SYNC-UPDATE-FAILED":{"Message":'Sync status is done but Values field on map data have not been updated, Pls confirm NUC is not available and recycle if needed', "Color":"FF0000"},
     "SYNC-FAILED":{"Message":'Sync response status is Failed, Pls confirm NUC is not available and recycle if needed', "Color":"FF0000"},
     "SYNC-CALL-FAILED":{"Message":'Sync api call Failed, Pls confirm NUC is not available and recycle if needed', "Color":"FF0000"},
@@ -26,59 +22,66 @@ const errors = {
     "PASSED-JOB-LIMIT":{"Message":'Distributor passed the job limit', "Color":"FF0000"},
     "TIMEOUT-GET-UDT":{"Message":'Get udt call timeout', "Color":"FF0000"},
     "TIMEOUT-SYNC":{"Message":'Sync call timeout', "Color":"FF0000"},
-    "TIMEOUT-SYNC-FAILED-TEST":{"Message":'sync_failed test timeout', "Color":"FF0000"}
+    "TIMEOUT-SYNC-FAILED-TEST":{"Message":'sync_failed test got timeout', "Color":"FF0000"}
 };
 
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
-    let timeout = setTimeout(async function() { 
-        //return 'TIMEOUT-GET-UDT';
-        await StatusUpdate(service, false, false, 'TIMEOUT-SYNC-FAILED-TEST');
-        },270000); //4.5 minutes
-
+    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const service = new MyService(client);
     let errorCode = '';
     let success = false;
     let errorMessage ='';
     let lastStatus;
+    let monitorSettings = {};
 
-    // validate before starting the test
-    const passedValidation = validateBeforeTest(service);
-    if (!passedValidation){
-        return;
+    try{
+        monitorSettings = await service.getMonitorSettings();
     }
-    
-    try {
-        errorCode = await SyncFailedTest(service);
+    catch (err){
+        await StatusUpdate(service, false, false, 'GET-ADAL-FAILED')
+    }
 
-        if (errorCode=='SYNC-SUCCESS'){
+    let timeout = setTimeout(async function() { 
+        //return 'TIMEOUT-GET-UDT';
+        await StatusUpdate(service, false, false, 'TIMEOUT-SYNC-FAILED-TEST', '', monitorSettings);
+        },270000); //4.5 minutes
+
+    try {
+        // validate before starting the test
+        lastStatus = monitorSettings['SyncFailed']? monitorSettings['SyncFailed'].Status : false;
+        const passedValidation = await validateBeforeTest(service, monitorSettings);
+        if (!passedValidation){
+            return;
+        }
+        errorCode = await SyncFailedTest(service, monitorSettings);
+
+        if (errorCode=='SUCCESS'){
             success = true;
         }
-
-        const AdditionalData = await GetAdditionalData(service);
-        Object.assign(service, {name: AdditionalData.Name});
-        Object.assign(service, {machine: AdditionalData.MachineAndPort});
-        lastStatus = AdditionalData.SyncFailed.Status;
-        errorMessage = await StatusUpdate(service, lastStatus, success, errorCode);
+        errorMessage = await StatusUpdate(service, lastStatus, success, errorCode,'', monitorSettings);
     }
     catch (err) {
         clearTimeout(timeout);
         success = false;
         const innerError = ('stack' in err) ? err.stack : 'Unknown Error Occured';
-        errorMessage = await StatusUpdate(service, false, success, 'UNKNOWN-ERROR',innerError);
+        errorMessage = await StatusUpdate(service, false, success, 'UNKNOWN-ERROR',innerError, monitorSettings);
+    }
+    finally{
+        clearTimeout(timeout);
     }
 
-    clearTimeout(timeout);
     return {
         success: success,
-        errorMessage: errorMessage,
+        errorMessage: errorMessage
     };
 };
 
 export async function job_limit_reached(client: Client, request: Request) {
     console.log('HealthMonitorAddon start JobLimitReached test');
     try {
+        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MyService(client);
         const jobLimit = await JobLimitReachedTest(service);
         return jobLimit;
@@ -95,18 +98,9 @@ export async function job_limit_reached(client: Client, request: Request) {
 export async function addon_limit_reached(client: Client, request: Request) {
     console.log('HealthMonitorAddon start AddonLimitReached test');
     try {
-        const papiClient = new PapiClient({
-            baseURL: client.BaseURL,
-            token: client.OAuthAccessToken,
-            addonUUID: client.AddonUUID
-        });
+        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MyService(client);
         const checkAddonsExecutionLimit = await AddonLimitReachedTest(service);
-        const checkMaintenance = await CheckMaintenanceWindow(service, papiClient);
-
-        const distributor = await GetDistributor(service);
-        await UpdateDistributorOnInstalledAddons(service, distributor);
-
         return checkAddonsExecutionLimit;
     }
     catch (err) {
@@ -115,13 +109,13 @@ export async function addon_limit_reached(client: Client, request: Request) {
             ErrorMessage: ('message' in err) ? err.message : 'Unknown Error Occured',
         }
     }
-
 };
 
 export async function job_execution_failed(client: Client, request: Request) {
     console.log('HealthMonitorAddon start jobExecutionFailed test');
 
     try {
+        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MyService(client);
         const jobExecution = await JobExecutionFailedTest(service);
         return jobExecution;
@@ -136,22 +130,21 @@ export async function job_execution_failed(client: Client, request: Request) {
 };
 
 export async function health_monitor_settings(client: Client, request: Request){
+    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const service = new MyService(client);
 
-    let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-    const additionalData= addon? addon.AdditionalData : false;
-    let data = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
-    delete data.SyncFailed.Status;
-    delete data.SyncFailed.ErrorCounter;
+    let monitorSettings = await service.getMonitorSettings();
+    delete monitorSettings.SyncFailed.Status;
+    delete monitorSettings.SyncFailed.ErrorCounter;
 
-    data.SyncFailed.ID='SYNC-FAILED';
-    data.JobLimitReached.ID='JOB-LIMIT-REACHED';
-    data.JobExecutionFailed.ID='JOB-EXECUTION-FAILED';
+    monitorSettings.SyncFailed.ID='SYNC-FAILED';
+    monitorSettings.JobLimitReached.ID='JOB-LIMIT-REACHED';
+    monitorSettings.JobExecutionFailed.ID='JOB-EXECUTION-FAILED';
 
     return [
-        data.SyncFailed,
-        data.JobLimitReached,
-        data.JobExecutionFailed
+        monitorSettings.SyncFailed,
+        monitorSettings.JobLimitReached,
+        monitorSettings.JobExecutionFailed
     ]
 };
 
@@ -162,18 +155,17 @@ export async function health_monitor_type_alert_edit(client: Client, request: Re
 
     try {
         const service = new MyService(client);
-        let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-        let additionalData = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
+        let monitorSettings = await service.getMonitorSettings();
 
         switch (request.body.Type){
             case "SYNC-FAILED":
-                typeData = additionalData.SyncFailed;
+                typeData = monitorSettings.SyncFailed;
                 break;
             case "JOB-LIMIT-REACHED":
-                typeData = additionalData.JobLimitReached;
+                typeData = monitorSettings.JobLimitReached;
                 break;
             case "JOB-EXECUTION-FAILED":
-                typeData = additionalData.JobExecutionFailed;
+                typeData = monitorSettings.JobExecutionFailed;
                 break;
             default:
                 return;
@@ -210,30 +202,29 @@ export async function health_monitor_type_alert_save(client: Client, request: Re
         });
 
         const service = new MyService(client);
-        let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-        let additionalData = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
+        let monitorSettings = await service.getMonitorSettings();
         
         switch (request.body.Type){
             case "SYNC-FAILED":
-                codeJob = await GetCodeJob(service,"SYNC-FAILED");
-                additionalData.SyncFailed.Webhook = request.body.Webhook;
-                //additionalData.SyncFailed.Email = request.body.Email;
-                lastInterval = additionalData.SyncFailed.Interval;
-                additionalData.SyncFailed.Interval = request.body.Interval;
+                codeJob = await service.papiClient.get('/code_jobs/'+monitorSettings.SyncFailedCodeJobUUID);
+                monitorSettings.SyncFailed.Webhook = request.body.Webhook;
+                //monitorSettings.SyncFailed.Email = request.body.Email;
+                lastInterval = monitorSettings.SyncFailed.Interval;
+                monitorSettings.SyncFailed.Interval = request.body.Interval;
                 break;
             case "JOB-LIMIT-REACHED":
-                codeJob = await GetCodeJob(service,"JOB-LIMIT-REACHED");
-                additionalData.JobLimitReached.Webhook = request.body.Webhook;
-                //additionalData.JobLimitReached.Email = request.body.Email;
-                lastInterval = additionalData.JobLimitReached.Interval;
-                additionalData.JobLimitReached.Interval = request.body.Interval;
+                codeJob = await service.papiClient.get('/code_jobs/'+monitorSettings.JobLimitReachedCodeJobUUID);
+                monitorSettings.JobLimitReached.Webhook = request.body.Webhook;
+                //monitorSettings.JobLimitReached.Email = request.body.Email;
+                lastInterval = monitorSettings.JobLimitReached.Interval;
+                monitorSettings.JobLimitReached.Interval = request.body.Interval;
                 break;
             case "JOB-EXECUTION-FAILED":
-                codeJob = await GetCodeJob(service,"JOB-EXECUTION-FAILED");
-                additionalData.JobExecutionFailed.Webhook = request.body.Webhook;
-                //additionalData.JobExecutionFailed.Email = request.body.Email;
-                lastInterval = additionalData.JobExecutionFailed.Interval;
-                additionalData.JobExecutionFailed.Interval = request.body.Interval;
+                codeJob = await service.papiClient.get('/code_jobs/'+monitorSettings.JobExecutionFailedCodeJobUUID);
+                monitorSettings.JobExecutionFailed.Webhook = request.body.Webhook;
+                //monitorSettings.JobExecutionFailed.Email = request.body.Email;
+                lastInterval = monitorSettings.JobExecutionFailed.Interval;
+                monitorSettings.JobExecutionFailed.Interval = request.body.Interval;
                 break;
             default:
                 return;
@@ -258,8 +249,7 @@ export async function health_monitor_type_alert_save(client: Client, request: Re
             const codeJobResponse = await UpdateCodeJobCronExpression(papiClient, codeJob, updatedCronExpression);
         }
     
-        addon.AdditionalData = JSON.stringify(additionalData);
-        const installedAddonsResponse = await papiClient.addons.installedAddons.upsert(addon);
+        const settingsResponse = await service.setMonitorSettings(monitorSettings);
 
         return{
             Success: true,
@@ -305,7 +295,7 @@ export async function health_monitor_dashboard(client: Client, request: Request)
             const hour = ((firstHour+i)%24).toString();
             labelArray.push(hour);
             listPromises.push(service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and Status.ID=1 and ModificationDateTime between '"+lowerRange.toISOString()+"' And '"+upperRange.toISOString()+"'&page_size=1000&order_by=ModificationDateTime asc")); //success
-            listPromises.push(service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and Status.ID=0 and ModificationDateTime between '"+lowerRange.toISOString()+"' And '"+upperRange.toISOString()+"'&page_size=1000&order_by=ModificationDateTime asc")); //failure
+            listPromises.push(service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and (Status.ID=0 or (Status.ID>1 and AuditInfo.JobMessageData.NumberOfTry>2)) and ModificationDateTime between '"+lowerRange.toISOString()+"' And '"+upperRange.toISOString()+"'&page_size=1000&order_by=ModificationDateTime asc")); //failure
             lowerRange = new Date(Date.parse(lowerRange.toISOString()) + 60*60*1000);
             upperRange = new Date(Date.parse(upperRange.toISOString()) + 60*60*1000);
         }
@@ -323,19 +313,19 @@ export async function health_monitor_dashboard(client: Client, request: Request)
         await Promise.all(listPromises).then(
             function(res){
                 let successCount = 0;
-                let failureCount = 0;
+                let delayedCount = 0;
                 let successArray = new Array();
-                let failureArray = new Array();
+                let delayedArray = new Array();
                 i = 0;
                 while (i<res.length){
                     successCount =successCount+ res[i].length;
-                    failureCount =failureCount+ res[i+1].length;
+                    delayedCount =delayedCount+ res[i+1].length;
                     successArray.push(res[i].length);
-                    failureArray.push(res[i+1].length);
+                    delayedArray.push(res[i+1].length);
                     i=i+2;
                 }
-                result.SyncStatus = {Success:successCount, Failure:failureCount};
-                result.DailySync = {Labels: labelArray , Success: successArray, Failure: failureArray};
+                result.SyncStatus = {Success:successCount, Delayed:delayedCount};
+                result.DailySync = {Labels: labelArray , Success: successArray, Delayed: delayedArray};
               }
         );
     
@@ -441,7 +431,7 @@ export async function send_test_message(client: Client, request: Request){
 //#endregion
 
 //#region health monitor tests
-export async function SyncFailedTest(service) {
+export async function SyncFailedTest(service, monitorSettings) {
     let udtResponse;
     let syncResponse;
     let statusResponse;
@@ -450,15 +440,15 @@ export async function SyncFailedTest(service) {
     let start;
     let end;
 
-    const additionalData = await GetAdditionalData(service);
-    let mapDataID = additionalData.SyncFailed.MapDataID;
+    const addonData = await service.getMonitorSettings();
+    let mapDataID = addonData.SyncFailed.MapDataID;
 
     //first udt
     try{ 
         console.log('HealthMonitorAddon, SyncFailedTest start first GET udt');
         timeout = setTimeout(async function() { 
             //return 'TIMEOUT-GET-UDT';
-            await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT');
+            await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
             },30000);
         start = Date.now();
         udtResponse = await service.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -519,7 +509,7 @@ export async function SyncFailedTest(service) {
         console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
         timeout = setTimeout(async function() { 
             //return 'TIMEOUT-SYNC';
-            await StatusUpdate(service, false, false, 'TIMEOUT-SYNC');
+            await StatusUpdate(service, false, false, 'TIMEOUT-SYNC','',monitorSettings);
             },120000);
         start = Date.now();
         syncResponse = await service.papiClient.post('/application/sync', body);
@@ -548,7 +538,7 @@ export async function SyncFailedTest(service) {
             console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
             timeout = setTimeout(async function() { 
                 //return 'TIMEOUT-GET-UDT';
-                await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT');
+                await StatusUpdate(service, false, false, 'TIMEOUT-GET-UDT','',monitorSettings);
                 },30000);
             start = Date.now();
             udtResponse = await service.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -564,7 +554,7 @@ export async function SyncFailedTest(service) {
         }
         
         if (udtResponse.Values[0] == count) {
-            return 'SYNC-SUCCESS';
+            return 'SUCCESS';
         }
         else {
             return 'SYNC-UPDATE-FAILED';
@@ -620,41 +610,38 @@ export async function JobLimitReachedTest(service) {
     try {
         console.log("JobLimitReachedTest: send get request to code_jobs/execution_budget");
         const result = await service.papiClient.get('/code_jobs/execution_budget');
-        let addon = await service.papiClient.addons.installedAddons.addonUUID(service.client.AddonUUID).get();
-        const additionalData = JSON.parse(addon.AdditionalData);
-        lastPercantage = additionalData.JobLimitReached.LastPercantage;
+        let monitorSettings = await service.getMonitorSettings();
+        lastPercantage = monitorSettings.JobLimitReached.LastPercantage;
 
         currentPercantage = parseFloat(((result.UsedBudget/(result.UsedBudget +result.FreeBudget))*100).toFixed(2));
         innerMessage ="You have reached " + currentPercantage +"% of your job limits.";
 
         if (currentPercantage>=80 && currentPercantage<90){
             if (lastPercantage<80){
-                ReportError(service, await GetDistributor(service), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
+                ReportError(service, await GetDistributorCache(service, monitorSettings), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
                 reportSent = true;
             }
         }
         else if (currentPercantage>=90 && currentPercantage<95){
             if (lastPercantage<90){
-                ReportError(service, await GetDistributor(service), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
+                ReportError(service, await GetDistributorCache(service, monitorSettings), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
                 reportSent = true;
             }
         }
         else if (currentPercantage>=95){
             if (lastPercantage<95){
-                ReportError(service, await GetDistributor(service), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
+                ReportError(service, await GetDistributorCache(service, monitorSettings), "PASSED-JOB-LIMIT", "JOB-LIMIT-REACHED", innerMessage );
                 reportSent = true;
             }
         }
 
         if (!reportSent){
-            ReportErrorCloudWatch(await GetDistributor(service), "JOB-LIMIT-SUCCESS", "JOB-LIMIT-REACHED", innerMessage );
+            ReportErrorCloudWatch(await GetDistributorCache(service, monitorSettings), "JOB-LIMIT-SUCCESS", "JOB-LIMIT-REACHED", innerMessage );
         }
 
         console.log(innerMessage);
-
-        additionalData.JobLimitReached.LastPercantage = currentPercantage;
-        addon.AdditionalData = JSON.stringify(additionalData);
-        const response = await service.papiClient.addons.installedAddons.upsert(addon);
+        monitorSettings.JobLimitReached.LastPercantage = currentPercantage;
+        const settingsResponse = await service.setMonitorSettings(monitorSettings); 
 
         console.log("HealthMonitorAddon, JobLimitReachedTest finish check execution budget limit");
         return {
@@ -677,10 +664,8 @@ export async function JobExecutionFailedTest(service) {
     let report;
 
     try {
-        const addonUUID = service.client.AddonUUID;
-        let addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-        let additionalData = JSON.parse(addon.AdditionalData);
-        const interval = additionalData.JobExecutionFailed.Interval;
+        let monitorSettings = await service.getMonitorSettings();
+        const interval = monitorSettings.JobExecutionFailed.Interval;
         const intervalDate = new Date(Date.now() - interval).toISOString();
         const intervalUTCDate = new Date(Date.now() - interval).toUTCString();
         const auditLogsResult = await service.papiClient.get("/audit_logs?where=AuditInfo.JobMessageData.IsScheduled=true and Status.ID=0 and ModificationDateTime>'"+intervalDate+"' and AuditInfo.JobMessageData.FunctionName!='monitor' and AuditInfo.JobMessageData.FunctionName!='sync_failed'&order_by=ModificationDateTime desc");
@@ -688,7 +673,7 @@ export async function JobExecutionFailedTest(service) {
 
         if (auditLogsResult.length==0){
             report= "No new errors were found since " + intervalUTCDate + ".";
-            ReportErrorCloudWatch(await GetDistributor(service), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+            ReportErrorCloudWatch(await GetDistributorCache(service, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
             console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
             return {
                 success:true, 
@@ -724,7 +709,7 @@ export async function JobExecutionFailedTest(service) {
 
             if (report.length==0){
                 const reportMessage= "No new errors were found since " + intervalUTCDate + ".";
-                ReportErrorCloudWatch(await GetDistributor(service), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+                ReportErrorCloudWatch(await GetDistributorCache(service, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
                 console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
                 return {
                     success:true, 
@@ -733,7 +718,7 @@ export async function JobExecutionFailedTest(service) {
             }
 
             innerMessage =JSON.stringify(report);
-            ReportError(service, await GetDistributor(service), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+            ReportError(service, await GetDistributorCache(service, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
         }
 
         console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
@@ -755,7 +740,21 @@ export async function JobExecutionFailedTest(service) {
 
 //#region private functions
 
-async function validateBeforeTest(service) {
+async function validateBeforeTest(service, monitorSettings) {
+    // check if monitor level is 4
+    if (monitorSettings.MonitorLevel==4){
+        return false;
+    }
+
+    // check if Nucleus is loaded
+    const isDistributorLoaded = await service.papiClient.get("/distributor/InNucleus");
+    if (!isDistributorLoaded){
+        if (monitorSettings.MonitorLevel>2){
+            console.log('This test dont run on monitor level 3 while distributor not loaded.');
+            return false;
+        }
+    }
+
     //check if in the last 2 minutes were successful sync dont perform test
     const twoMinutesAgo = new Date(Date.now() - 150 * 1000).toISOString();
     const currentSync = await service.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and ModificationDateTime>'"+twoMinutesAgo+"' and Status.ID=1");
@@ -763,9 +762,6 @@ async function validateBeforeTest(service) {
         console.log('There was a successful sync at the last 150 seconds.');
         return false;
     }
-
-    // check if Nucleus is loaded
-
 
     return true;
 }
@@ -791,7 +787,7 @@ async function ReportErrorCloudWatch(distributor, errorCode, type , innerMessage
     let error = "";
     error = 'DistributorID: '+distributor.InternalID+'\n\rName: '+distributor.Name+'\n\rMachine and Port: '+distributor.MachineAndPort+'\n\rType: ' + type+ '\n\rCode: ' + errorCode + '\n\rMessage: '+ errors[errorCode]["Message"] + '\n\rInnerMessage: '+ innerMessage;
 
-    if (errorCode=='SYNC-SUCCESS')
+    if (errorCode=='SUCCESS')
         console.log(error);
     else
         console.error(error);
@@ -804,12 +800,25 @@ async function ReportErrorCloudWatch(distributor, errorCode, type , innerMessage
     const environmant = 'production';
     const distributor = await GetDistributor(service);
     const errorCode = "SYNC-CALL-FAILED";
-    //const errorCode = "SYNC-SUCCESS";
+    //const errorCode = "SUCCESS";
     const type = "JOB-EXECUTION-FAILED";
     const innerMessage = "Test by Amir F.";
 
     ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage);
 }*/
+
+export async function ReportErrorTeamsDriver(client: Client, request: Request){
+    const service = new MyService(client);
+    const environmant = 'sandbox';//jwtDecode(service.client.OAuthAccessToken)["pepperi.datacenter"];
+    //const environmant = 'production';
+    const distributor = await GetDistributor(service);
+    //const errorCode = "SYNC-CALL-FAILED";
+    const errorCode = "SUCCESS";
+    const type = "SYNC-FAILED";
+    const innerMessage = "Test by Meital";
+
+    ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage);
+}
 
 async function ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage="") {
     let url = '';
@@ -843,45 +852,56 @@ async function ReportErrorTeams(service, environmant, distributor, errorCode, ty
         }],
     };
     let unite = false;
+    let varUpdated = true;
 
     if (type == "SYNC-FAILED"){
         const alertBody = {
             DistributorID: distributor.InternalID,
-            ErrorCode:errorCode
+            AlertCode: errorCode
         };
-        const alertLogicResponse = await service.papiClient.post('/var/addons/health_monitor/alerts', alertBody);
-        if (alertLogicResponse.unite){
-            if (alertLogicResponse.alert){
-                unite =true;
-                body = {
-                    themeColor: errors[errorCode]["Color"]=="00FF00"? "FFFF00": errors[errorCode]["Color"],
-                    Summary: `Errors on ${alertLogicResponse.count} distributors`,
-                    sections: [{
-                        facts: [{
-                            name: "Distributors",
-                            value: alertLogicResponse.count.toString()
-                        },{
-                            name: "Code",
-                            value: alertLogicResponse.errorCodes.toString()
-                        },{
-                            name: "Type",
-                            value: type
+        try {
+            const alertLogicResponse = await service.papiClient.post('/var/addons/health_monitor/alerts', alertBody);
+            if (alertLogicResponse.Count>=5){
+                unite = true;
+                const alert = errorCode=='SUCCESS'? alertLogicResponse.Count%10==0 : new Date(alertLogicResponse.TopAlerts[0].Value).getMinutes() > new Date(alertLogicResponse.TopAlerts[1].Value).getMinutes();
+                if (alert){
+                    body = {
+                        themeColor: errors[errorCode]["Color"]=="00FF00"? "FFFF00": errors[errorCode]["Color"],
+                        Summary: `Errors on ${alertLogicResponse.Count} distributors`,
+                        sections: [{
+                            facts: [{
+                                name: "Distributors",
+                                value: alertLogicResponse.Count.toString()
+                            },{
+                                name: "Code",
+                                value: alertLogicResponse.AlertCode
+                            },{
+                                name: "Type",
+                                value: type
+                            },
+                            {
+                                name: "Message",
+                                value: errors[alertLogicResponse.AlertCode]["Message"]
+                            }],
+                            "markdown": true
                         }],
-                        "markdown": true
-                    }],
-                };
+                    };
+                }
+                else{
+                    return;
+                }
             }
-            else{
-                return;
-            }
+        }
+        catch (err){
+            varUpdated = false;
         }
     }
 
     // Changed urls to use new configuration for Teams.
     if (environmant=='sandbox'){
-        if (errorCode=='SYNC-SUCCESS') 
+        if (errorCode=='SUCCESS') 
             if (unite) //yellow icon
-                url = '';
+                url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/cb540659239545cc8be681c2a51f8c7e/4361420b-8fde-48eb-b62a-0e34fec63f5c';
             else //green icon
                 url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/a9e46257d73a40b39b563b77dc6abe6a/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
@@ -889,9 +909,9 @@ async function ReportErrorTeams(service, environmant, distributor, errorCode, ty
         }
     }
     else{
-        if (errorCode=='SYNC-SUCCESS') 
+        if (errorCode=='SUCCESS') 
             if (unite) //yellow icon
-                url = '';
+                url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/628bc029561b4d76875a2b5c0b48c58f/4361420b-8fde-48eb-b62a-0e34fec63f5c';
             else //green icon
                 url = 'https://wrnty.webhook.office.com/webhookb2/9da5da9c-4218-4c22-aed6-b5c8baebfdd5@2f2b54b7-0141-4ba7-8fcd-ab7d17a60547/IncomingWebhook/400154cd59544fd583791a2f99641189/4361420b-8fde-48eb-b62a-0e34fec63f5c';
         else{ // red icon
@@ -909,22 +929,20 @@ async function ReportErrorWebhook(service, errorCode, type, innerMessage="") {
     //need to decide which errors the admin can get
     let url= "";
     let testType="";
-    const addonUUID = service.client.AddonUUID;
-    const addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    const additionalData = JSON.parse(addon.AdditionalData);
+    const monitorSettings = await service.getMonitorSettings();
 
     switch (type){
         case "SYNC-FAILED":
-            url = additionalData.SyncFailed.Webhook;
-            testType = additionalData.SyncFailed.Type;
+            url = monitorSettings.SyncFailed.Webhook;
+            testType = monitorSettings.SyncFailed.Type;
             break;
         case "JOB-LIMIT-REACHED":
-            url = additionalData.JobLimitReached.Webhook;
-            testType = additionalData.JobLimitReached.Type;
+            url = monitorSettings.JobLimitReached.Webhook;
+            testType = monitorSettings.JobLimitReached.Type;
             break;
         case "JOB-EXECUTION-FAILED":
-            url = additionalData.JobExecutionFailed.Webhook;
-            testType = additionalData.JobExecutionFailed.Type;
+            url = monitorSettings.JobExecutionFailed.Webhook;
+            testType = monitorSettings.JobExecutionFailed.Type;
             break;
         default:
             return;
@@ -958,20 +976,16 @@ async function ReportErrorWebhook(service, errorCode, type, innerMessage="") {
     }
 }
 
-function GetDistributorID(service){
-    return jwtDecode(service.client.OAuthAccessToken)['pepperi.distributorid'];
-}
-
 async function GetDistributor(service){
-    
-    const distributorID = GetDistributorID(service);
+    const distributorID = jwtDecode(service.client.OAuthAccessToken)['pepperi.distributorid'];
+    const monitorSettings = service.getMonitorSettings();
     const distributor ={
         InternalID: distributorID,
-        Name: service.name,
-        MachineAndPort: service.machine
+        Name: monitorSettings.Name,
+        MachineAndPort: monitorSettings.MachineAndPort,
+        MonitorLevel: monitorSettings.MonitorLevel
     };
     try{
-        
         let distributorData = await service.papiClient.get('/distributor');
         distributor.Name = distributorData.Name;
         const machineData = await service.papiClient.get('/distributor/machine');
@@ -981,127 +995,49 @@ async function GetDistributor(service){
     catch(err){
         return distributor;
     }
-    
 }
 
-function GetDistributorCache(service){
-    
-    const distributorID = GetDistributorID(service);
+function GetDistributorCache(service, monitorSettings){
+    const distributorID = jwtDecode(service.client.OAuthAccessToken)['pepperi.distributorid'];
     const distributor ={
         InternalID: distributorID,
-        Name: service.name,
-        MachineAndPort: service.machine
+        Name: monitorSettings.Name,
+        MachineAndPort: monitorSettings.MachineAndPort,
+        MonitorLevel: monitorSettings.MonitorLevel
     };
     return distributor;
 }
 
-async function UpdateInstalledAddons(service, distributor, status) {
-    const addonUUID = service.client.AddonUUID;
-    let addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    let data = JSON.parse(addon.AdditionalData);
-    data.SyncFailed.Status = status;
-    data.Name = distributor.Name;
-    data.MachineAndPort = distributor.MachineAndPort;
+async function UpdateMonitorSettingsSyncFailed(service, distributor, status) {
+    const monitorSettings = await service.getMonitorSettings();
+    monitorSettings.SyncFailed.Status = status;
+    monitorSettings.Name = distributor.Name;
+    monitorSettings.MachineAndPort = distributor.MachineAndPort;
     if (!status){
-        data.SyncFailed.ErrorCounter = data.SyncFailed.ErrorCounter +1;
+        monitorSettings.SyncFailed.ErrorCounter = monitorSettings.SyncFailed.ErrorCounter +1;
     }
-    addon.AdditionalData = JSON.stringify(data);
-
-    const response = await service.papiClient.addons.installedAddons.upsert(addon);
+    const settingsResponse = await service.setMonitorSettings(monitorSettings); 
 }
 
-async function UpdateDistributorOnInstalledAddons(service, distributor) {
-    const addonUUID = service.client.AddonUUID;
-    let addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    let data = JSON.parse(addon.AdditionalData);
-    data.Name = distributor.Name;
-    data.MachineAndPort = distributor.MachineAndPort;
-    addon.AdditionalData = JSON.stringify(data);
-
-    const response = await service.papiClient.addons.installedAddons.upsert(addon);
-}
-
-async function GetAdditionalData(service) {
-    const addonUUID = service.client.AddonUUID;
-    let addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    return JSON.parse(addon.AdditionalData);
-}
-
-async function StatusUpdate(service, lastStatus, success, errorCode, innerMessage=""){
+async function StatusUpdate(service, lastStatus, success, errorCode, innerMessage="", monitorSettings={}){
     let errorMessage = '';
     let distributor;
     const statusChanged = lastStatus? !success: success; //xor (true, false) -> true 
     if (!success){ //write to channel 'System Status' if the test failed
-        distributor = await GetDistributorCache(service);
+        distributor = await GetDistributorCache(service, monitorSettings);
         errorMessage = await ReportError(service, distributor, errorCode, "SYNC-FAILED", innerMessage);
-        await UpdateInstalledAddons(service, distributor, success);
+        await UpdateMonitorSettingsSyncFailed(service, distributor, success);
     }
     else if (statusChanged){ //write to channel 'System Status' on the first time when test changes from fail to success
-        distributor = await GetDistributor(service);
+        distributor = await GetDistributorCache(service, monitorSettings);
         errorMessage = await ReportError(service, distributor, errorCode, "SYNC-FAILED", innerMessage);
-        await UpdateInstalledAddons(service, distributor, success);
+        await UpdateMonitorSettingsSyncFailed(service, distributor, success);
     }
     else{
-        distributor = GetDistributorCache(service);
+        distributor = GetDistributorCache(service, monitorSettings);
         errorMessage = await ReportErrorCloudWatch(distributor, errorCode, "SYNC-FAILED", innerMessage);
     }
     return errorMessage;
-}
-
-async function CheckMaintenanceWindow(service, papiClient) {
-    let success = false;
-    try{
-        
-        const maintenance = await service.papiClient.metaData.flags.name('Maintenance').get();
-        const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-        let addon = await papiClient.addons.installedAddons.addonUUID(service.client.AddonUUID).get();
-        let additionalData = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
-        const seconds = additionalData.SyncFailed.Interval/1000;
-        const minutes = seconds/60;
-        const hours = minutes/60;
-        let updatedCronExpression;
-
-        if (hours>1){
-            updatedCronExpression = await GetCronExpression(service.client.OAuthAccessToken, maintenanceWindowHour, false, true, hours);
-        }
-        else{
-            updatedCronExpression = await GetCronExpression(service.client.OAuthAccessToken, maintenanceWindowHour, true, false, minutes ); 
-        }
-
-        const codeJob = await GetCodeJob(service,"SYNC-FAILED");
-        const previosCronExpression = codeJob.CronExpression;
-        if (updatedCronExpression!=previosCronExpression){
-            await UpdateCodeJobCronExpression(papiClient, codeJob, updatedCronExpression);
-        }
-        success = true;
-        return success;
-    }
-    catch (err){
-        return success;
-    }
-    
-}
-
-async function GetCodeJob(service, type) {
-    const addonUUID = service.client.AddonUUID;
-    const addon = await service.papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    let codeJobUUID;
-    switch (type){
-        case "SYNC-FAILED":
-            codeJobUUID = JSON.parse(addon.AdditionalData).SyncFailedCodeJobUUID;
-            break;
-        case "JOB-LIMIT-REACHED":
-            codeJobUUID = JSON.parse(addon.AdditionalData).JobLimitReachedCodeJobUUID;
-            break;
-        case "JOB-EXECUTION-FAILED":
-            codeJobUUID = JSON.parse(addon.AdditionalData).JobExecutionFailedCodeJobUUID;
-            break;
-        default:
-            return;
-    }
-    const codeJob = await service.papiClient.get('/code_jobs/'+codeJobUUID);
-
-    return codeJob;
 }
 
 async function UpdateCodeJobCronExpression(papiClient, codeJob, updatedCronExpression) {

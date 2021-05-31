@@ -1,5 +1,6 @@
 import { PapiClient, InstalledAddon } from '@pepperi-addons/papi-sdk'
 import { Client } from '@pepperi-addons/debug-server';
+import jwtDecode from "jwt-decode";
 
 class MyService {
 
@@ -20,6 +21,24 @@ class MyService {
 
     getAddons(): Promise<InstalledAddon[]> {
         return this.papiClient.addons.installedAddons.find({});
+    }
+
+    async getMonitorSettings() {
+        const distributorID = jwtDecode(this.client.OAuthAccessToken)['pepperi.distributorid'].toString();
+        const addonUUID= this.client.AddonUUID;
+        const monitorSettings = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').key(distributorID).get();
+        return monitorSettings.Data;
+    }
+    
+    async setMonitorSettings(data) {
+        const distributorID = jwtDecode(this.client.OAuthAccessToken)['pepperi.distributorid'].toString();
+        const addonUUID= this.client.AddonUUID;
+        const settingsBodyADAL= {
+            Key: distributorID,
+            Data: data
+        };
+        const settingsResponse = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+        return settingsResponse;
     }
 }
 

@@ -41,9 +41,9 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
       const syncStatus = new Chart(this.ctxSyncStatus, {
         type: 'doughnut',
         data: {
-        labels: ['SUCCESS', 'FAILURE'],
+        labels: ['SUCCESS', 'DELAYED'],
         datasets: [{
-          data: [this.dashboardData.SyncStatus.Success, this.dashboardData.SyncStatus.Failure],
+          data: [this.dashboardData.SyncStatus.Success, this.dashboardData.SyncStatus.Delayed],
           backgroundColor: [
             'rgba(75, 220, 172, 0.7)',
             'rgba(255, 89, 90, 0.7)'],
@@ -83,7 +83,7 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
               spanGaps: false,
             },
             {
-              label:'Failure',
+              label:'Delayed',
               fill: false,
               lineTension: 0.1,
               backgroundColor: 'rgba(255, 89, 90, 0.7)',
@@ -101,14 +101,14 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
               pointHoverBorderWidth: 2,
               pointRadius: 1,
               pointHitRadius: 10,
-              data: this.dashboardData.DailySync.Failure,
+              data: this.dashboardData.DailySync.Delayed,
               spanGaps: false,
             }
           ]
         }
       });
 
-      this.dashboardData.LastSync.StatusName = this.dashboardData.LastSync.Status? 'Success' : 'Failure';
+      this.dashboardData.LastSync.StatusName = this.dashboardData.LastSync.Status? 'Success' : 'Delayed';
       this.dashboardData.LastSync.Color = this.dashboardData.LastSync.Status? 'inherit' : 'rgba(255, 89, 90, 1)'; 
       this.dashboardData.JobTimeUsage.Color = this.dashboardData.JobTimeUsage.Percantage <80 ? 'inherit' : 'rgba(255, 89, 90, 1)';
     }

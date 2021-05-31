@@ -10,64 +10,11 @@ The erroeMessage is importent! it will be written in the audit log and help the 
 import { PapiClient, CodeJob, AddonDataScheme } from "@pepperi-addons/papi-sdk";
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
+import MyService from './my.service';
+import { Service } from "aws-sdk";
 
-export const PepperiUsageMonitorTable: AddonDataScheme = {
-    Name: "PepperiUsageMonitor",
-    Type: "data"
-}
 
 exports.install = async (client: Client, request: Request) => {
-    // Pepperi Usage Monitor
-    try {
-        const papiClient = new PapiClient({
-            baseURL: client.BaseURL,
-            token: client.OAuthAccessToken,
-            addonUUID: client.AddonUUID,
-            addonSecretKey: client.AddonSecretKey
-        });
-
-        // Install scheme for Pepperi Usage Monitor
-        try {
-            await papiClient.addons.data.schemes.post(PepperiUsageMonitorTable);
-            console.log('PepperiUsageMonitor Table installed successfully.');
-        }
-        catch (err) {
-            return {
-                success: false,
-                errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor table failed.',
-            }
-        }
-
-        // Install code job for Pepperi Usage Monitor
-        try {
-            const codeJob: CodeJob = await papiClient.codeJobs.upsert({
-                CodeJobName: "Pepperi Usage Monitor Addon Code Job",
-                Description: "Pepperi Usage Monitor",
-                Type: "AddonJob",
-                IsScheduled: true,
-                CronExpression: getCronExpression(),
-                AddonPath: "api-success-monitor",
-                FunctionName: "run_collect_data",
-                AddonUUID: client.AddonUUID,
-                NumberOfTries: 30,
-            });
-            console.log('PepperiUsageMonitor code job installed successfully.');
-        }
-        catch (err)
-        {
-            return {
-                success: false,
-                errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor code job failed.',
-            }
-        }
-    }
-    catch (err) {
-        return {
-            success: false,
-            errorMessage: ('message' in err) ? err.message : 'Cannot install HealthMonitorAddon (PepperiUsageMonitor). Unknown Error Occured',
-        };
-    }
-
     try {
         let success = true;
         let errorMessage = '';
@@ -75,28 +22,24 @@ exports.install = async (client: Client, request: Request) => {
         let successSyncFailed = true;
         let successJobLimitReached = true;
         let successJobExecutionFailed = true;
-        let successAddonLimitReached = true;
-        let successDailyAddonUsage = true
+        let successDailyAddonUsage = true;
+        let successUsageMonitor = true;
 
-        const papiClient = new PapiClient({
-            baseURL: client.BaseURL,
-            token: client.OAuthAccessToken,
-            addonUUID: client.AddonUUID
-        });
+        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
+        const service = new MyService(client);
 
         // install SyncFailed test
-        let retValSyncFailed = await InstallSyncFailed(client, papiClient);
+        let retValSyncFailed = await InstallSyncFailed(service);
         successSyncFailed = retValSyncFailed.success;
         errorMessage = "SyncFailed Test installation failed on: " + retValSyncFailed.errorMessage;
         if (!successSyncFailed){
             console.error(errorMessage);
             return retValSyncFailed;
         }
-        let mapDataID=retValSyncFailed["mapDataID"];
         console.log('SyncFailed codejob installed succeeded.');
 
         // install JobLimitReached test
-        let retValJobLimitReached = await InstallJobLimitReached(client, papiClient);
+        let retValJobLimitReached = await InstallJobLimitReached(service);
         successJobLimitReached = retValJobLimitReached.success;
         errorMessage = "JobLimitReached Test installation failed on: " + retValJobLimitReached.errorMessage;
         if (!successJobLimitReached){
@@ -106,7 +49,7 @@ exports.install = async (client: Client, request: Request) => {
         console.log('JobLimitReached codejob installed succeeded.');
 
         // install JobExecutionFailed test
-        let retValJobExecutionFailed = await InstallJobExecutionFailed(client, papiClient);
+        let retValJobExecutionFailed = await InstallJobExecutionFailed(service);
         successJobExecutionFailed = retValJobExecutionFailed.success;
         errorMessage = "JobExecutionFailed Test installation failed on: " + retValJobExecutionFailed.errorMessage;
         if (!successJobExecutionFailed){
@@ -116,7 +59,7 @@ exports.install = async (client: Client, request: Request) => {
         console.log('JobExecutionFailed codejob installed succeeded.');
 
         // install DailyAddonUsage codejob
-        let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
+        let retValDailyAddonUsage = await InstallDailyAddonUsage(service);
         successDailyAddonUsage = retValDailyAddonUsage.success;
         errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
         if (!successDailyAddonUsage){
@@ -125,19 +68,47 @@ exports.install = async (client: Client, request: Request) => {
         }
         console.log('DailyAddonUsage codejob installed succeeded.');
         
-        
-        // add all needed default data to the additinal data
-        let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-        let data = addon.AdditionalData? JSON.parse(addon.AdditionalData):{};
-        const distributor = await GetDistributor(papiClient);
-        data.Name = distributor.Name;
-        data.MachineAndPort = distributor.MachineAndPort;
-        data.SyncFailed = { Type:"Sync failed", Status: true, ErrorCounter:0, MapDataID:mapDataID, Email:"", Webhook:"",Interval:5*60*1000 };
-        data.JobLimitReached = {Type:"Job limit reached", LastPercantage:0, Email:"", Webhook:"",Interval:24*60*60*1000};
-        data.JobExecutionFailed = {Type:"Job execution failed", Email:"", Webhook:"",Interval:24*60*60*1000};
+        // install PepperiUsageMonitor code job
+        let retValUsageMonitor = await InstallUsageMonitor(service);
+        successUsageMonitor = retValUsageMonitor.success;
+        errorMessage = "UsageMonitor installation failed on: " + retValUsageMonitor.errorMessage;
+        if (!successUsageMonitor){
+            console.error(errorMessage);
+            return retValUsageMonitor;
+        }
+        console.log('UsageMonitor codejob installed succeeded.');
 
-        addon.AdditionalData = JSON.stringify(data);
-        await papiClient.addons.installedAddons.upsert(addon);
+        // from 2.1 addon settings on ADAL
+        const bodyADAL:AddonDataScheme = {
+            Name: 'HealthMonitorSettings',
+            Type: 'meta_data'
+        };
+        const headersADAL = {
+            "X-Pepperi-OwnerID": client.AddonUUID,
+            "X-Pepperi-SecretKey": client.AddonSecretKey
+        };
+
+        const responseSettingsTable = await service.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
+
+        const data = {};
+        const distributor = await GetDistributor(service.papiClient);
+        const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+        data["Name"] = distributor.Name;
+        data["MachineAndPort"] = distributor.MachineAndPort;
+        data["MonitorLevel"] = (monitorLevel ==false) ? 4 : monitorLevel;
+        data["SyncFailed"] = { Type:"Sync failed", Status: true, ErrorCounter:0, MapDataID: retValSyncFailed["mapDataID"], Email:"", Webhook:"",Interval:parseInt(retValSyncFailed["interval"])*60*1000 };
+        data["JobLimitReached"] = {Type:"Job limit reached", LastPercantage:0, Email:"", Webhook:"",Interval:24*60*60*1000};
+        data["JobExecutionFailed"] = {Type:"Job execution failed", Email:"", Webhook:"",Interval:24*60*60*1000};
+        data[retValSyncFailed["codeJobName"]] = retValSyncFailed["codeJobUUID"];
+        data[retValJobLimitReached["codeJobName"]] = retValJobLimitReached["codeJobUUID"];
+        data[retValJobExecutionFailed["codeJobName"]] = retValJobExecutionFailed["codeJobUUID"];
+        data[retValDailyAddonUsage["codeJobName"]] = retValDailyAddonUsage["codeJobUUID"];
+        data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
+        const settingsBodyADAL= {
+            Key: distributor.InternalID.toString(),
+            Data: data
+        };
+        const settingsResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
 
         console.log('HealthMonitorAddon installed succeeded.');
         return {
@@ -156,16 +127,14 @@ exports.install = async (client: Client, request: Request) => {
 
 exports.uninstall = async (client: Client, request: Request) => {
     try {
-        const papiClient = new PapiClient({
-            baseURL: client.BaseURL,
-            token: client.OAuthAccessToken,
-            addonUUID: client.AddonUUID
-        });
+        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
+        const service = new MyService(client);
+        const monitorSettings = await service.getMonitorSettings();
 
         // unschedule SyncFailed test
-        let syncFailedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'SyncFailedCodeJobUUID');
+        let syncFailedCodeJobUUID = monitorSettings.SyncFailedCodeJobUUID;
         if(syncFailedCodeJobUUID != '') {
-            await papiClient.codeJobs.upsert({
+            await service.papiClient.codeJobs.upsert({
                 UUID:syncFailedCodeJobUUID,
                 CodeJobName: "SyncFailed Test",
                 IsScheduled: false,
@@ -175,9 +144,9 @@ exports.uninstall = async (client: Client, request: Request) => {
         console.log('SyncFailed codejob unschedule succeeded.');
 
         // unschedule JobLimitReached test
-        let jobLimitReachedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'JobLimitReachedCodeJobUUID');
+        let jobLimitReachedCodeJobUUID = monitorSettings.JobLimitReachedCodeJobUUID 
         if(jobLimitReachedCodeJobUUID != '') {
-            await papiClient.codeJobs.upsert({
+            await service.papiClient.codeJobs.upsert({
                 UUID:jobLimitReachedCodeJobUUID,
                 CodeJobName: "JobLimitReached Test",
                 IsScheduled: false,
@@ -186,22 +155,10 @@ exports.uninstall = async (client: Client, request: Request) => {
         }
         console.log('JobLimitReached codejob unschedule succeeded.');
 
-        // unschedule AddonLimitReached test
-        let addonLimitReachedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'AddonLimitReachedCodeJobUUID');
-        if(addonLimitReachedCodeJobUUID != '') {
-            await papiClient.codeJobs.upsert({
-                UUID:addonLimitReachedCodeJobUUID,
-                CodeJobName: "AddonLimitReached Test",
-                IsScheduled: false,
-                CodeJobIsHidden:true
-            });
-        }
-        console.log('AddonLimitReached codejob unschedule succeeded.');
-
         // unschedule JobExecutionFailed test
-        let jobExecutionFailedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'JobExecutionFailedCodeJobUUID');
+        let jobExecutionFailedCodeJobUUID = monitorSettings.JobExecutionFailedCodeJobUUID;
         if(jobExecutionFailedCodeJobUUID != '') {
-            await papiClient.codeJobs.upsert({
+            await service.papiClient.codeJobs.upsert({
                 UUID:jobExecutionFailedCodeJobUUID,
                 CodeJobName: "JobExecutionFailed Test",
                 IsScheduled: false,
@@ -211,23 +168,40 @@ exports.uninstall = async (client: Client, request: Request) => {
         console.log('JobExecutionFailed codejob unschedule succeeded.');
 
         // unschedule DailyAddonUsage
-        let dailyAddonUsageCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'DailyAddonUsageCodeJobUUID');
+        let dailyAddonUsageCodeJobUUID = monitorSettings.DailyAddonUsageCodeJobUUID;
         if(dailyAddonUsageCodeJobUUID != '') {
-            await papiClient.codeJobs.upsert({
+            await service.papiClient.codeJobs.upsert({
                 UUID:dailyAddonUsageCodeJobUUID,
                 CodeJobName: "DailyAddonUsage",
                 IsScheduled: false,
                 CodeJobIsHidden:true
             });
         }
+        console.log('DailyAddonUsage codejob unschedule succeeded.');
+
+        // unschedule UsageMonitor
+        let UsageMonitorCodeJobUUID = monitorSettings.UsageMonitorCodeJobUUID;
+        if(UsageMonitorCodeJobUUID != '') {
+            await service.papiClient.codeJobs.upsert({
+                UUID:UsageMonitorCodeJobUUID,
+                CodeJobName: "Pepperi Usage Monitor Addon Code Job",
+                IsScheduled: false,
+                CodeJobIsHidden:true
+            });
+        }
+        console.log('UsageMonitor codejob unschedule succeeded.');
+
+        // purge ADAL tables
         var headersADAL = {
             "X-Pepperi-OwnerID": client.AddonUUID,
             "X-Pepperi-SecretKey": client.AddonSecretKey
         }
-        const responseDailyAddonUsageTable = await papiClient.post('/addons/data/schemes/DailyAddonUsage/purge',null, headersADAL);
-        console.log('DailyAddonUsage codejob unschedule succeeded.');
+        const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge',null, headersADAL);
+        const responsePepperiUsageMonitorTable = await service.papiClient.post('/addons/data/schemes/PepperiUsageMonitor/purge',null, headersADAL);
+        const responseSettingsTable = await service.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge',null, headersADAL);
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
+
         return {
             success:true,
             errorMessage:'',
@@ -243,115 +217,57 @@ exports.uninstall = async (client: Client, request: Request) => {
     }
 };
 
-async function shouldUpgradePepperiUsageMonitor(papiClient: PapiClient, client: Client): Promise<boolean> {
-    const addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-    const version = addon?.Version?.split('.').map(item => {return Number(item)}) || [];
-
-    return version.length == 3 && version[0] < 2;
-}
-
 exports.upgrade = async (client: Client, request: Request) => {
 
     let success = true;
     let errorMessage = '';
     let resultObject = {};
 
-    const papiClient = new PapiClient({
-        baseURL: client.BaseURL,
-        token: client.OAuthAccessToken,
-        addonUUID: client.AddonUUID,
-        addonSecretKey: client.AddonSecretKey
-    });
+    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
+    const service = new MyService(client);
 
     try {
-        if (await shouldUpgradePepperiUsageMonitor(papiClient, client)) {
-            // Install scheme for Pepperi Usage Monitor
-            try {
-                await papiClient.addons.data.schemes.post(PepperiUsageMonitorTable);
-                console.log('PepperiUsageMonitor Table installed successfully.');
-            }
-            catch (err) {
-                return {
-                    success: false,
-                    errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor table failed.',
+        let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
+        const version = addon?.Version?.split('.').map(item => {return Number(item)}) || [];
+
+        // upgrade to 2.1 from 2.0 or 1.0 versions
+        if (version.length==3 && ((version[0] < 2) || (version[0] == 2 && version[1] <1))){
+            const additionalData = addon.AdditionalData? addon.AdditionalData : "";
+            let data = JSON.parse(additionalData);
+
+            // install UsageMonitor if not installed yet from version 2.0
+            if (version.length==3 && version[0] < 2){         
+                let retValUsageMonitor = await InstallUsageMonitor(service);
+                let successUsageMonitor = retValUsageMonitor.success;
+                errorMessage = "DailyAddonUsage codejob installation failed on: " + retValUsageMonitor.errorMessage;
+                if (!successUsageMonitor){
+                    console.error(errorMessage);
+                    return retValUsageMonitor;
                 }
+                console.log('DailyAddonUsage codejob installed succeeded.');
+                data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
             }
 
-            // Install code job for Pepperi Usage Monitor
-            try {
-                const codeJob: CodeJob = await papiClient.codeJobs.upsert({
-                    CodeJobName: "Pepperi Usage Monitor Addon Code Job",
-                    Description: "Pepperi Usage Monitor",
-                    Type: "AddonJob",
-                    IsScheduled: true,
-                    CronExpression: getCronExpression(),
-                    AddonPath: "api-success-monitor",
-                    FunctionName: "run_collect_data",
-                    AddonUUID: client.AddonUUID,
-                    NumberOfTries: 30,
-                });
-                console.log('PepperiUsageMonitor code job installed successfully.');
-            }
-            catch (err)
-            {
-                return {
-                    success: false,
-                    errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor code job failed.',
-                }
-            }
+            // upgrade to version 2.1.0 - move addon settings from additional data to ADAL
+            const bodyADAL:AddonDataScheme = {
+                Name: 'HealthMonitorSettings',
+                Type: 'meta_data'
+            };
+            const headersADAL = {
+                "X-Pepperi-OwnerID": client.AddonUUID,
+                "X-Pepperi-SecretKey": client.AddonSecretKey
+            };
+            const responseSettingsTable = await service.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
+            const distributor = await GetDistributor(service.papiClient);
+            const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+            data["MonitorLevel"] = (monitorLevel ==false) ? 4 : monitorLevel;
+            const settingsBodyADAL= {
+                Key: distributor.InternalID.toString(),
+                Data: data
+            };
+            const settingsResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+            console.log('HealthMonitor upgrade from additional data to ADAL succeeded.');
         }
-    }
-    catch (err){
-        return {
-            success: false,
-            errorMessage: ('message' in err) ? err.message : 'Failed to upgrade HealthMonitor Addon (Pepperi Usage Monitor)'
-        };
-    }
-
-    try {
-        // add to AdditionalData data.SyncFailed.MapDataID - from version 1.0.56
-        let addon = await papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
-        const additionalData = addon.AdditionalData? addon.AdditionalData : "";
-        let data = JSON.parse(additionalData);
-        if (!data.SyncFailed.MapDataID){
-            const udtResponse = await papiClient.userDefinedTables.iter({ where: "MapDataExternalID='PepperiHealthMonitor'" }).toArray();
-            data.SyncFailed.MapDataID = udtResponse[0].InternalID;
-            addon.AdditionalData = JSON.stringify(data);
-            const response = await papiClient.addons.installedAddons.upsert(addon);
-        }
-        
-        /////////////////////////////////////////////////////////////////////
-        // install DailyAddonUsage if not installed yet from version 1.0.58
-        if (!data.DailyAddonUsageCodeJobUUID){
-            // install DailyAddonUsage codejob
-            let retValDailyAddonUsage = await InstallDailyAddonUsage(client, papiClient);
-            let successDailyAddonUsage = retValDailyAddonUsage.success;
-            errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
-            if (!successDailyAddonUsage){
-                console.error(errorMessage);
-                return retValDailyAddonUsage;
-            }
-            console.log('DailyAddonUsage codejob installed succeeded.');
-        } 
-
-        // unschedule AddonLimitReached test
-        if (data.AddonLimitReachedCodeJobUUID){
-            let addonLimitReachedCodeJobUUID = await GetCodeJobUUID(papiClient, client.AddonUUID, 'AddonLimitReachedCodeJobUUID');
-            if(addonLimitReachedCodeJobUUID != '') {
-                await papiClient.codeJobs.upsert({
-                    UUID:addonLimitReachedCodeJobUUID,
-                    CodeJobName: "AddonLimitReached Test",
-                    IsScheduled: false,
-                    CodeJobIsHidden:true
-                });
-            }
-            delete data ['AddonLimitReachedCodeJobUUID'];
-            addon.AdditionalData = JSON.stringify(data);
-            const response = await papiClient.addons.installedAddons.upsert(addon);
-            console.log('AddonLimitReached codejob unschedule succeeded.');
-        }
-        /////////////////////////////////////////////////////////////////////
-
         
         console.log('HealthMonitorAddon upgrade succeeded.');
         return {
@@ -371,55 +287,170 @@ exports.downgrade = async (client: Client, request: Request) => {
     return {success:true,resultObject:{}};
 };
 
-//#region private functions
+//#region install code jobs
 
-async function UpdateCodeJobUUID(papiClient, addonUUID, uuid, CodeJobTestName) {
-    try {
-        let addon = await papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-        console.log("installed addon object is: " + JSON.stringify(addon));
-        const additionalData= addon? addon.AdditionalData : false;
-        if(additionalData) {
-            let data = JSON.parse(addon.AdditionalData);
-            data[CodeJobTestName] = uuid;
-            addon.AdditionalData = JSON.stringify(data);
-        }
-        else {
-            console.log("could not recieved addon with ID: " + addonUUID);
-            return {
-                success: false,
-                errorMessage: "Addon does not exists."
-            };
-        }
-        console.log("addon object to post is: " + JSON.stringify(addon));
-        await papiClient.addons.installedAddons.upsert(addon);
-        return {
-            success:true, 
-            errorMessage:""
+async function InstallJobLimitReached(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
+    };
+
+    try{
+        let codeJob = await CreateAddonCodeJob(service, "JobLimitReached Test", "JobLimitReached Test for HealthMonitor Addon. Check distributor not pass the addons execution limit.", "api", 
+        "job_limit_reached", GetJobLimitCronExpression(service.client.OAuthAccessToken));
+        retVal["codeJobName"] = 'JobLimitReachedCodeJobUUID';
+        retVal["codeJobUUID"] = codeJob.UUID;
+    }
+    catch (err){
+        retVal = {
+            success: false,
+            errorMessage: err.message
         };
+    }
+    return retVal;
+}
+
+async function InstallAddonLimitReached(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
+    };
+
+    try{
+        let codeJob = await CreateAddonCodeJob(service, "AddonLimitReached Test", "AddonLimitReached Test for HealthMonitor Addon. Check distributor not pass the addons execution limit.", "api", 
+        "addon_limit_reached", GetAddonLimitCronExpression(service.client.OAuthAccessToken));
+        retVal["codeJobName"] = 'AddonLimitReachedCodeJobUUID';
+        retVal["codeJobUUID"] = codeJob.UUID;
+    }
+    catch (err){
+        retVal = {
+            success: false,
+            errorMessage: err.message
+        };
+    }
+    return retVal;
+}
+
+async function InstallJobExecutionFailed(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
+    };
+
+    try{
+        let codeJob = await CreateAddonCodeJob(service, "JobExecutionFailed Test", "JobExecutionFailed Test for HealthMonitor Addon.", "api", 
+        "job_execution_failed", GetJobExecutionCronExpression(service.client.OAuthAccessToken));
+        retVal["codeJobName"] = 'JobExecutionFailedCodeJobUUID';
+        retVal["codeJobUUID"] = codeJob.UUID;
+    }
+    catch (err){
+        retVal = {
+            success: false,
+            errorMessage: err.message
+        };
+    }
+    return retVal;
+}
+
+async function InstallDailyAddonUsage(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
+    };
+
+    try{
+        let codeJob = await CreateAddonCodeJob(service, "DailyAddonUsage", "DailyAddonUsage for HealthMonitor Addon.", "addon-usage", 
+        "daily_addon_usage", GetDailyAddonUsageCronExpression(service.client.OAuthAccessToken));
+        retVal["codeJobName"] = 'DailyAddonUsageCodeJobUUID';
+        retVal["codeJobUUID"] = codeJob.UUID;
+
+        // add table to ADAL
+        const bodyDailyAddonUsageTable:AddonDataScheme = {
+            Name: 'DailyAddonUsage',
+            Type: 'meta_data'
+        };
+        const headersADAL = {
+            "X-Pepperi-OwnerID": service.client.AddonUUID,
+            "X-Pepperi-SecretKey": service.client.AddonSecretKey
+        }
+        const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes', bodyDailyAddonUsageTable, headersADAL);
+    }
+    catch(err){
+        retVal = {
+            success: false,
+            errorMessage: err.message
+        };
+    }
+    return retVal;
+}
+
+async function InstallUsageMonitor(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
+    };
+
+    try {
+        // Install scheme for Pepperi Usage Monitor
+        try {
+            await service.papiClient.addons.data.schemes.post(PepperiUsageMonitorTable);
+            console.log('PepperiUsageMonitor Table installed successfully.');
+        }
+        catch (err) {
+            retVal = {
+                success: false,
+                errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor table failed.',
+            }
+        }
+
+        // Install code job for Pepperi Usage Monitor
+        try {
+            const codeJob = await service.papiClient.codeJobs.upsert({
+                CodeJobName: "Pepperi Usage Monitor Addon Code Job",
+                Description: "Pepperi Usage Monitor",
+                Type: "AddonJob",
+                IsScheduled: true,
+                CronExpression: getCronExpression(),
+                AddonPath: "api-success-monitor",
+                FunctionName: "run_collect_data",
+                AddonUUID: service.client.AddonUUID,
+                NumberOfTries: 30,
+            });
+            retVal["codeJobName"] = 'UsageMonitorCodeJobUUID';
+            retVal["codeJobUUID"] = codeJob.UUID;
+            console.log('PepperiUsageMonitor code job installed successfully.');
+        }
+        catch (err)
+        {
+            retVal = {
+                success: false,
+                errorMessage: ('message' in err) ? err.message : 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor code job failed.',
+            }
+        }
     }
     catch (err) {
-        return {
+        retVal = {
             success: false,
-            errorMessage: ('message' in err) ? err.message : 'Unknown Error Occured',
+            errorMessage: ('message' in err) ? err.message : 'Cannot install HealthMonitorAddon (PepperiUsageMonitor). Unknown Error Occured',
         };
     }
+    return retVal;
 }
 
-async function GetCodeJobUUID(papiClient, addonUUID, CodeJobTestName) {
-    let uuid = '';
-    let addon = await papiClient.addons.installedAddons.addonUUID(addonUUID).get();
-    const additionalData= addon? addon.AdditionalData : false;
-    if(additionalData) {
-        let data = JSON.parse(addon.AdditionalData);
-        uuid = data[CodeJobTestName];
-    }
-    return uuid;
+//#endregion
+
+
+//#region private functions
+
+export const PepperiUsageMonitorTable: AddonDataScheme = {
+    Name: "PepperiUsageMonitor",
+    Type: "data"
 }
 
-function GetMonitorCronExpression(token, maintenanceWindowHour){
+function GetMonitorCronExpression(token, maintenanceWindowHour, interval){
     // rand is integet between 0-4 included.
-    const rand = (jwtDecode(token)['pepperi.distributorid'])%60;
-    const minute = rand +"-59/60";
+    const rand = (jwtDecode(token)['pepperi.distributorid'])%interval;
+    const minute = rand +"-59/"+interval;
     let hour = '';
 
     // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
@@ -473,76 +504,55 @@ function GetDailyAddonUsageCronExpression(token){
     return rand +"-59/60 5 * * *";
 }
 
-async function InstallSyncFailed(client, papiClient){
-    const mapDataMetaData ={
-        TableID:"PepperiHealthMonitor",
-        MainKeyType: {ID:0, Name:"Any"},
-        SecondaryKeyType:{ID:0,Name:"Any"},
-        Hidden : false,
-        MemoryMode: {
-            Dormant: false,
-            Volatile: false
-        }
-    };
-    const mapData ={
-        MapDataExternalID:"PepperiHealthMonitor",
-        MainKey:"MonitorSyncCounter",
-        SecondaryKey:"",
-        Values: ["0"]
+async function InstallSyncFailed(service){
+    let retVal={
+        success: true,
+        errorMessage: ''
     };
 
-    const resultAddUDT = await papiClient.metaData.userDefinedTables.upsert(mapDataMetaData);
-    const resultAddUDTRow = await papiClient.userDefinedTables.upsert(mapData);
-
-    const maintenance = await papiClient.metaData.flags.name('Maintenance').get();
-    const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-    let codeJob = await CreateAddonCodeJob(client, papiClient, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(client.OAuthAccessToken, maintenanceWindowHour));
-    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'SyncFailedCodeJobUUID');
-    retVal["mapDataID"]=resultAddUDTRow.InternalID;
-    return retVal;
-}
-
-async function InstallJobLimitReached(client, papiClient){
-    let codeJob = await CreateAddonCodeJob(client, papiClient, "JobLimitReached Test", "JobLimitReached Test for HealthMonitor Addon. Check distributor not pass the addons execution limit.", "api", 
-    "job_limit_reached", GetJobLimitCronExpression(client.OAuthAccessToken));
-    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'JobLimitReachedCodeJobUUID');
-    return retVal;
-}
-
-async function InstallAddonLimitReached(client, papiClient){
-    let codeJob = await CreateAddonCodeJob(client, papiClient, "AddonLimitReached Test", "AddonLimitReached Test for HealthMonitor Addon. Check distributor not pass the addons execution limit.", "api", 
-    "addon_limit_reached", GetAddonLimitCronExpression(client.OAuthAccessToken));
-    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'AddonLimitReachedCodeJobUUID');
-    return retVal;
-}
-
-async function InstallJobExecutionFailed(client, papiClient){
-    let codeJob = await CreateAddonCodeJob(client, papiClient, "JobExecutionFailed Test", "JobExecutionFailed Test for HealthMonitor Addon.", "api", 
-    "job_execution_failed", GetJobExecutionCronExpression(client.OAuthAccessToken));
-    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'JobExecutionFailedCodeJobUUID');
-    return retVal;
-}
-
-async function InstallDailyAddonUsage(client, papiClient){
-    let codeJob = await CreateAddonCodeJob(client, papiClient, "DailyAddonUsage", "DailyAddonUsage for HealthMonitor Addon.", "addon-usage", 
-    "daily_addon_usage", GetDailyAddonUsageCronExpression(client.OAuthAccessToken));
-    let retVal = await UpdateCodeJobUUID(papiClient, client.AddonUUID, codeJob.UUID, 'DailyAddonUsageCodeJobUUID');
+    try{
+        const mapDataMetaData ={
+            TableID:"PepperiHealthMonitor",
+            MainKeyType: {ID:0, Name:"Any"},
+            SecondaryKeyType:{ID:0,Name:"Any"},
+            Hidden : false,
+            MemoryMode: {
+                Dormant: false,
+                Volatile: false
+            }
+        };
+        const mapData ={
+            MapDataExternalID:"PepperiHealthMonitor",
+            MainKey:"MonitorSyncCounter",
+            SecondaryKey:"",
+            Values: ["0"]
+        };
     
-    // add table to ADAL
-    const bodyDailyAddonUsageTable:AddonDataScheme = {
-        Name: 'DailyAddonUsage',
-        Type: 'meta_data'
-    };
-    const headersADAL = {
-        "X-Pepperi-OwnerID": client.AddonUUID,
-        "X-Pepperi-SecretKey": client.AddonSecretKey
+        const resultAddUDT = await service.papiClient.metaData.userDefinedTables.upsert(mapDataMetaData);
+        const resultAddUDTRow = await service.papiClient.userDefinedTables.upsert(mapData);
+    
+        const maintenance = await service.papiClient.metaData.flags.name('Maintenance').get();
+        const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
+        let monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+        monitorLevel = (monitorLevel==false) ? 4 :monitorLevel;
+        const interval = monitorLevel>1? 15 : 5;
+        let codeJob = await CreateAddonCodeJob(service, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(service.client.OAuthAccessToken, maintenanceWindowHour, interval));
+        retVal["mapDataID"]=resultAddUDTRow.InternalID;
+        retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
+        retVal["codeJobUUID"] = codeJob.UUID;
+        retVal["interval"] = monitorLevel>1? 15 : 5;
     }
-    const responseDailyAddonUsageTable = await papiClient.post('/addons/data/schemes', bodyDailyAddonUsageTable, headersADAL);
+    catch (err){
+        retVal = {
+            success: false,
+            errorMessage: err.message
+        };
+    }
     return retVal;
 }
 
-async function CreateAddonCodeJob(client, papiClient, jobName, jobDescription, addonPath, functionName, cronExpression){
-    const codeJob = await papiClient.codeJobs.upsert({
+async function CreateAddonCodeJob(service, jobName, jobDescription, addonPath, functionName, cronExpression){
+    const codeJob = await service.papiClient.codeJobs.upsert({
         CodeJobName: jobName,
         Description: jobDescription,
         Type: "AddonJob",
@@ -550,7 +560,7 @@ async function CreateAddonCodeJob(client, papiClient, jobName, jobDescription, a
         CronExpression: cronExpression,
         AddonPath: addonPath,
         FunctionName: functionName,
-        AddonUUID: client.AddonUUID,
+        AddonUUID: service.client.AddonUUID,
         NumberOfTries: 1
     });
     console.log("result object recieved from Code jobs is: " + JSON.stringify(codeJob));
