@@ -38,7 +38,7 @@ class MyService {
             Data: data
         };
         const settingsResponse = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
-        return settingsResponse;
+        return settingsResponse.Data;
     }
 }
 

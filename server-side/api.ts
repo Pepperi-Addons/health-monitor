@@ -51,10 +51,18 @@ export async function sync_failed(client: Client, request: Request) {
     try {
         // validate before starting the test
         lastStatus = monitorSettings['SyncFailed']? monitorSettings['SyncFailed'].Status : false;
-        const passedValidation = await validateBeforeTest(service, monitorSettings);
-        if (!passedValidation){
-            return;
+        if (request.body==null || !request.body.RunNow){
+            if (lastStatus){
+                const passedValidation = await validateBeforeTest(service, monitorSettings);
+                if (!passedValidation){
+                    return {
+                        success: true,
+                        errorMessage: "Do not run test"
+                    };
+                }
+            }
         }
+
         errorCode = await SyncFailedTest(service, monitorSettings);
 
         if (errorCode=='SUCCESS'){
@@ -391,6 +399,7 @@ export async function run_now(client: Client, request: Request){
 
     switch (request.body.Type){
         case "SYNC-FAILED":
+            request.body.RunNow = true;
             result = await sync_failed(client, request);
             if (result.success){
                 message = "Sync is successful";

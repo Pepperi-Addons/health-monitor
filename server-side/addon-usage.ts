@@ -15,9 +15,9 @@ export async function daily_addon_usage(client: Client, request: Request) {
     const distributor = await service.papiClient.get('/distributor');
 
     try {
-        const dailyAddonsUsage = await getDailyAddonUsage(service, client, distributor);
         const monitorSettings = await updateMonitorSettings(service);
-        const checkMaintenance = await checkMaintenanceWindow(service);
+        const dailyAddonsUsage = await getDailyAddonUsage(service, distributor, monitorSettings);
+        const checkMaintenance = await checkMaintenanceWindow(service, monitorSettings);
 
         return {
             success: true, 
@@ -37,17 +37,17 @@ export async function daily_addon_usage(client: Client, request: Request) {
 
 //#region private methods
 
-async function getDailyAddonUsage(service, client, distributor) {
+async function getDailyAddonUsage(service, distributor, monitorSettings) {
     const now = Date.now();
 
     // get the daily memory usage per addon from CloudWatch
     const cloudWatchLogs = await getcloudWatchLogs(service, now);
-    const dailyAddonUsage = await upsertDailyAddonUsageToADAL(client, service, cloudWatchLogs, now);
+    const dailyAddonUsage = await upsertDailyAddonUsageToADAL(service, cloudWatchLogs, now);
 
     // check conditions for problematic use of lambdas, create report and alert problems
-    const memoreUsageLimit = 5000000;
-    const dailyReport = await getDailyReport(service, distributor, dailyAddonUsage, memoreUsageLimit); 
-    const monthlyReport = await getMonthlyReport(client, service, distributor, memoreUsageLimit);
+    const memoryUsageLimit = monitorSettings.MemoryUsageLimit;
+    const dailyReport = await getDailyReport(service, distributor, dailyAddonUsage, memoryUsageLimit); 
+    const monthlyReport = await getMonthlyReport(service, distributor, memoryUsageLimit);
 
     console.log('HealthMonitorAddon ended daily addon usage');
     return {DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"]};
@@ -64,28 +64,28 @@ async function getcloudWatchLogs(service, now){
     return cloudWatchResponse;
 }
 
-async function upsertDailyAddonUsageToADAL(client, service, cloudWatchLogs, now) {
+async function upsertDailyAddonUsageToADAL(service, cloudWatchLogs, now) {
     const nowDate = new Date(now-24*3600*1000);
     const dailyAddonUsageBody= {
         Key: nowDate.toLocaleDateString(),
         AddonsUsage: cloudWatchLogs,
         ExpirationDateTime: getExpirationDateTime()
     };
-    const dailyAddonUsageResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('DailyAddonUsage').upsert(dailyAddonUsageBody);
+    const dailyAddonUsageResponse = await service.papiClient.addons.data.uuid(service.client.AddonUUID).table('DailyAddonUsage').upsert(dailyAddonUsageBody);
     return dailyAddonUsageResponse;
 }
 
-async function getDailyReport(service, distributor, dailyAddonUsage, memoreUsageLimit) {
+async function getDailyReport(service, distributor, dailyAddonUsage, memoryUsageLimit) {
     const dailyReport = { PassedLimit: new Array(), NotPassedLimit: new Array() };
     if(dailyAddonUsage != null && dailyAddonUsage.AddonsUsage != null && Object.keys(dailyAddonUsage.AddonsUsage).length > 0){
         const addonsUsage = dailyAddonUsage.AddonsUsage;
         for (var item in addonsUsage) {
-            if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage>memoreUsageLimit){
+            if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage>memoryUsageLimit){
                 const innerMessage = "AddonUUID "+item + " reached the memory usage limit - " + addonsUsage[item].MemoryUsage;
                 reportError(service, distributor, "ADDON-USAGE", "DAILY-ADDON-USAGE-LIMIT-REACHED", innerMessage);
                 dailyReport["PassedLimit"].push(item);
             }
-            else if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage<memoreUsageLimit){
+            else if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage<memoryUsageLimit){
                 dailyReport["NotPassedLimit"].push(item);
             }
         }
@@ -93,9 +93,9 @@ async function getDailyReport(service, distributor, dailyAddonUsage, memoreUsage
     return dailyReport;
 }
 
-async function getMonthlyReport(client, service, distributor, memoreUsageLimit) {
+async function getMonthlyReport(service, distributor, memoryUsageLimit) {
     const monthlyReport = { PassedLimit: new Array(), NotPassedLimit: new Array() };
-    const monthlyAddonUsageResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('DailyAddonUsage').iter({order_by:"CreationDateTime desc", page_size:30}).toArray();
+    const monthlyAddonUsageResponse = await service.papiClient.addons.data.uuid(service.client.AddonUUID).table('DailyAddonUsage').iter({order_by:"CreationDateTime desc", page_size:30}).toArray();
     const monthlyAddonUsage = new Array();
     let addonsUsage ={};
     monthlyAddonUsageResponse.forEach(dailyAddonsUsage => {
@@ -110,12 +110,12 @@ async function getMonthlyReport(client, service, distributor, memoreUsageLimit) 
     });
     if (monthlyAddonUsage != null && Object.keys(monthlyAddonUsage).length > 0){
         for (var item in monthlyAddonUsage) {
-            if (monthlyAddonUsage[item].MemoryUsage != null && monthlyAddonUsage[item].MemoryUsage>(memoreUsageLimit*10)){
+            if (monthlyAddonUsage[item].MemoryUsage != null && monthlyAddonUsage[item].MemoryUsage>(memoryUsageLimit*10)){
                 const innerMessage = "AddonUUID "+item + " reached the memory usage limit - " + monthlyAddonUsage[item].MemoryUsage;
                 reportError(service, distributor, "ADDON-USAGE", "MONTHLY-ADDON-USAGE-LIMIT-REACHED", innerMessage);
                 monthlyReport["PassedLimit"].push(item);
             }
-            else if (monthlyAddonUsage[item].MemoryUsage != null && monthlyAddonUsage[item].MemoryUsage<(memoreUsageLimit*10)){
+            else if (monthlyAddonUsage[item].MemoryUsage != null && monthlyAddonUsage[item].MemoryUsage<(memoryUsageLimit*10)){
                 monthlyReport["NotPassedLimit"].push(item);
             }
         }
@@ -178,13 +178,12 @@ async function reportError(service, distributor, errorCode, type, innerMessage) 
     });
 }
 
-async function checkMaintenanceWindow(service) {
+async function checkMaintenanceWindow(service, monitorSettings) {
     let success = false;
 
     try{
         const maintenance = await service.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-        let monitorSettings = await service.getMonitorSettings();
         const seconds = monitorSettings.SyncFailed.Interval/1000;
         const minutes = seconds/60;
         const hours = minutes/60;
@@ -214,10 +213,12 @@ async function updateMonitorSettings(service) {
     let distributorData = await service.papiClient.get('/distributor');
     const machineData = await service.papiClient.get('/distributor/machine');
     const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+    const memoryUsageLimit = await service.papiClient.get('/meta_data/flags/MemoryUsageLimit');
     let monitorSettings = await service.getMonitorSettings();
     monitorSettings.Name = distributorData.Name;
     monitorSettings.MachineAndPort = machineData.Machine + ":" + machineData.Port;
     monitorSettings.MonitorLevel = (monitorLevel ==false) ? 4 : monitorLevel;
+    monitorSettings["MemoryUsageLimit"] = (memoryUsageLimit ==false) ? 5000000 : memoryUsageLimit;
 
     const response = await service.setMonitorSettings(monitorSettings);
     return response;

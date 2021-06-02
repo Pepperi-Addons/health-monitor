@@ -27,6 +27,18 @@ exports.install = async (client: Client, request: Request) => {
         client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MyService(client);
 
+        //
+        const bodyADAL1:AddonDataScheme = {
+            Name: 'HealthMonitorSettings',
+            Type: 'meta_data'
+        };
+        const headersADAL1 = {
+            "X-Pepperi-OwnerID": client.AddonUUID,
+            "X-Pepperi-SecretKey": client.AddonSecretKey
+        };
+
+        const responseSettingsTable1 = await service.papiClient.post('/addons/data/schemes', bodyADAL1, headersADAL1);
+
         // install SyncFailed test
         let retValSyncFailed = await InstallSyncFailed(service);
         successSyncFailed = retValSyncFailed.success;
@@ -67,7 +79,7 @@ exports.install = async (client: Client, request: Request) => {
         }
         console.log('DailyAddonUsage codejob installed succeeded.');
         
-        // install PepperiUsageMonitor code job
+/*         // install PepperiUsageMonitor code job
         let retValUsageMonitor = await InstallUsageMonitor(service);
         successUsageMonitor = retValUsageMonitor.success;
         errorMessage = "UsageMonitor installation failed on: " + retValUsageMonitor.errorMessage;
@@ -75,7 +87,7 @@ exports.install = async (client: Client, request: Request) => {
             console.error(errorMessage);
             return retValUsageMonitor;
         }
-        console.log('UsageMonitor codejob installed succeeded.');
+        console.log('UsageMonitor codejob installed succeeded.'); */
 
         // from 2.1 addon settings on ADAL
         const bodyADAL:AddonDataScheme = {
@@ -92,9 +104,11 @@ exports.install = async (client: Client, request: Request) => {
         const data = {};
         const distributor = await GetDistributor(service.papiClient);
         const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+        const memoryUsageLimit = await service.papiClient.get('/meta_data/flags/MemoryUsageLimit');
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
         data["MonitorLevel"] = (monitorLevel ==false) ? 4 : monitorLevel;
+        data["MemoryUsageLimit"] = (memoryUsageLimit ==false) ? 5000000 : memoryUsageLimit;
         data["SyncFailed"] = { Type:"Sync failed", Status: true, ErrorCounter:0, MapDataID: retValSyncFailed["mapDataID"], Email:"", Webhook:"",Interval:parseInt(retValSyncFailed["interval"])*60*1000 };
         data["JobLimitReached"] = {Type:"Job limit reached", LastPercantage:0, Email:"", Webhook:"",Interval:24*60*60*1000};
         data["JobExecutionFailed"] = {Type:"Job execution failed", Email:"", Webhook:"",Interval:24*60*60*1000};
@@ -102,7 +116,7 @@ exports.install = async (client: Client, request: Request) => {
         data[retValJobLimitReached["codeJobName"]] = retValJobLimitReached["codeJobUUID"];
         data[retValJobExecutionFailed["codeJobName"]] = retValJobExecutionFailed["codeJobUUID"];
         data[retValDailyAddonUsage["codeJobName"]] = retValDailyAddonUsage["codeJobUUID"];
-        data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
+        //data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
         const settingsBodyADAL= {
             Key: distributor.InternalID.toString(),
             Data: data
@@ -178,7 +192,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         }
         console.log('DailyAddonUsage codejob unschedule succeeded.');
 
-        // unschedule UsageMonitor
+/*         // unschedule UsageMonitor
         let UsageMonitorCodeJobUUID = monitorSettings.UsageMonitorCodeJobUUID;
         if(UsageMonitorCodeJobUUID != '') {
             await service.papiClient.codeJobs.upsert({
@@ -188,7 +202,7 @@ exports.uninstall = async (client: Client, request: Request) => {
                 CodeJobIsHidden:true
             });
         }
-        console.log('UsageMonitor codejob unschedule succeeded.');
+        console.log('UsageMonitor codejob unschedule succeeded.'); */
 
         // purge ADAL tables
         var headersADAL = {
@@ -196,7 +210,7 @@ exports.uninstall = async (client: Client, request: Request) => {
             "X-Pepperi-SecretKey": client.AddonSecretKey
         }
         const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge',null, headersADAL);
-        const responsePepperiUsageMonitorTable = await service.papiClient.post('/addons/data/schemes/PepperiUsageMonitor/purge',null, headersADAL);
+        //const responsePepperiUsageMonitorTable = await service.papiClient.post('/addons/data/schemes/PepperiUsageMonitor/purge',null, headersADAL);
         const responseSettingsTable = await service.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge',null, headersADAL);
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
@@ -234,7 +248,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             const additionalData = addon.AdditionalData? addon.AdditionalData : "";
             let data = JSON.parse(additionalData);
 
-            // install UsageMonitor if not installed yet from version 2.0
+/*             // install UsageMonitor if not installed yet from version 2.0
             if (!data.UsageMonitorCodeJobUUID){         
                 let retValUsageMonitor = await InstallUsageMonitor(service);
                 let successUsageMonitor = retValUsageMonitor.success;
@@ -245,7 +259,7 @@ exports.upgrade = async (client: Client, request: Request) => {
                 }
                 console.log('DailyAddonUsage codejob installed succeeded.');
                 data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
-            }
+            } */
 
             // upgrade to version 2.1.0 - move addon settings from additional data to ADAL
             const bodyADAL:AddonDataScheme = {
@@ -259,7 +273,9 @@ exports.upgrade = async (client: Client, request: Request) => {
             const responseSettingsTable = await service.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
             const distributor = await GetDistributor(service.papiClient);
             const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+            const memoryUsageLimit = await service.papiClient.get('/meta_data/flags/MemoryUsageLimit');
             data["MonitorLevel"] = (monitorLevel ==false) ? 4 : monitorLevel;
+            data["MemoryUsageLimit"] = (memoryUsageLimit ==false) ? 5000000 : memoryUsageLimit;
             const settingsBodyADAL= {
                 Key: distributor.InternalID.toString(),
                 Data: data
