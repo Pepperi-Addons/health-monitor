@@ -1,8 +1,8 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { PepFieldClickedData, PepFieldValueChangedData } from '@pepperi-addons/ngx-lib';
+import { IPepFieldValueChangeEvent } from '@pepperi-addons/ngx-lib';
 import { AppService } from "../app.service";
-import {DialogService,PepDialogActionButton} from "@pepperi-addons/ngx-lib/dialog";
+import { PepDialogService, PepDialogActionButton} from "@pepperi-addons/ngx-lib/dialog";
 import { PepDialogData } from "@pepperi-addons/ngx-lib/dialog";
 import { ActivatedRoute } from '@angular/router';
 
@@ -19,7 +19,7 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
   constructor(      
     private translate: TranslateService,
     private appService: AppService,
-    private dialogService: DialogService,
+    private dialogService: PepDialogService,
     private route: ActivatedRoute ) { }
 
   ngOnInit() {
@@ -66,7 +66,7 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
       title: title,
       content: content,
       actionButtons: [actionButton],
-      type: "custom",
+      actionsType: "custom",
     });
     this.dialogService
       .openDefaultDialog(dialogData)
@@ -75,7 +75,7 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
       });
   }
 
-  onValueChanged(event: PepFieldValueChangedData) {
+  onValueChanged(event: IPepFieldValueChangeEvent) {
     this.typeData[event.key] =event.value;
   }
 

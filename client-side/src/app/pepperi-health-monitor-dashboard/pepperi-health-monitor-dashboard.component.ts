@@ -1,8 +1,8 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { PepListComponent, ChangeSortingEvent } from '@pepperi-addons/ngx-lib/list';
-import { CustomizationService, HttpService, ObjectSingleData, DataConvertorService,
-  PepRowData, PepFieldData, AddonService, FIELD_TYPE, UtilitiesService } from '@pepperi-addons/ngx-lib';
+import { PepListComponent } from '@pepperi-addons/ngx-lib/list';
+import { ObjectSingleData, PepDataConvertorService,
+  PepRowData, PepFieldData, FIELD_TYPE } from '@pepperi-addons/ngx-lib';
 import { AppService } from "../app.service";
 import { Chart } from "chart.js";
 
@@ -23,7 +23,7 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
 
   constructor(private translate: TranslateService,
     private appService: AppService,
-    private dataConvertorService: DataConvertorService) { }
+    private dataConvertorService: PepDataConvertorService) { }
 
   ngOnInit() {
     this.appService.getAddonServerAPI('api','health_monitor_dashboard',{})
@@ -126,16 +126,18 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
               tableData.push(this.convertTestToPepRowData(action, allKeys));
           });
           const pepperiListObj = this.dataConvertorService.convertListData(tableData);
-          const buffer = [];
-          if (pepperiListObj.Rows) {
-              pepperiListObj.Rows.forEach( row => {
-                  const osd = new ObjectSingleData(pepperiListObj.UIControl, row);
-                  osd.IsEditable = true;
-                  buffer.push(osd);
-              });
-          }
+          // const buffer = [];
+          // if (pepperiListObj.Rows) {
+          //     pepperiListObj.Rows.forEach( row => {
+          //         const osd = new ObjectSingleData(pepperiListObj.UIControl, row);
+          //         osd.IsEditable = true;
+          //         buffer.push(osd);
+          //     });
+          // }
+          // this.customList.initListData(pepperiListObj.UIControl, buffer.length, buffer);
 
-          this.customList.initListData(pepperiListObj.UIControl, buffer.length, buffer, 'table', '', true);
+          const uiControl = this.dataConvertorService.getUiControl(tableData[0]);
+          this.customList.initListData(uiControl, pepperiListObj.length, pepperiListObj);
       }
   }
 

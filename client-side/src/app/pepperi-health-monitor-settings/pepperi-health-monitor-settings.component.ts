@@ -1,10 +1,10 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { CustomizationService, HttpService, ObjectSingleData, DataConvertorService,
-    PepRowData, PepFieldData, AddonService, FIELD_TYPE, UtilitiesService } from '@pepperi-addons/ngx-lib';
-import { PepListComponent, ChangeSortingEvent } from '@pepperi-addons/ngx-lib/list';
+import { ObjectSingleData, PepDataConvertorService,
+    PepRowData, PepFieldData, FIELD_TYPE } from '@pepperi-addons/ngx-lib';
+import { PepListComponent} from '@pepperi-addons/ngx-lib/list';
 import { AppService } from "../app.service";
-import {DialogService,PepDialogActionButton} from "@pepperi-addons/ngx-lib/dialog";
+import { PepDialogService,PepDialogActionButton} from "@pepperi-addons/ngx-lib/dialog";
 import { PepDialogData } from "@pepperi-addons/ngx-lib/dialog";
 
 @Component({
@@ -26,13 +26,9 @@ export class PepperiHealthMonitorSettingsComponent implements OnInit {
 
   constructor(
       private translate: TranslateService,
-      private customizationService: CustomizationService,
-      private utilitiesService: UtilitiesService,
-      private dataConvertorService: DataConvertorService,
-      private httpService: HttpService,
-      private addonService: AddonService,
+      private dataConvertorService: PepDataConvertorService,
       private appService: AppService,
-      private dialogService: DialogService
+      private dialogService: PepDialogService
   ) {
 
       const browserCultureLang = translate.getBrowserCultureLang();
@@ -70,7 +66,7 @@ export class PepperiHealthMonitorSettingsComponent implements OnInit {
       title: title,
       content: content,
       actionButtons: [actionButton],
-      type: "custom",
+      actionsType: "custom",
     });
     this.dialogService
       .openDefaultDialog(dialogData)
@@ -99,16 +95,18 @@ export class PepperiHealthMonitorSettingsComponent implements OnInit {
               tableData.push(this.convertTestToPepRowData(test, allKeys));
           });
           const pepperiListObj = this.dataConvertorService.convertListData(tableData);
-          const buffer = [];
-          if (pepperiListObj.Rows) {
-              pepperiListObj.Rows.forEach( row => {
-                  const osd = new ObjectSingleData(pepperiListObj.UIControl, row);
-                  osd.IsEditable = true;
-                  buffer.push(osd);
-              });
-          }
+          // const buffer = [];
+          // if (pepperiListObj.Rows) {
+          //     pepperiListObj.Rows.forEach( row => {
+          //         const osd = new ObjectSingleData(pepperiListObj.UIControl, row);
+          //         osd.IsEditable = true;
+          //         buffer.push(osd);
+          //     });
+          // }
+          // this.customList.initListData(pepperiListObj.UIControl, buffer.length, buffer);
 
-          this.customList.initListData(pepperiListObj.UIControl, buffer.length, buffer, 'table', '', true);
+          const uiControl = this.dataConvertorService.getUiControl(tableData[0]);
+          this.customList.initListData(uiControl, pepperiListObj.length, pepperiListObj);
       }
   }
 

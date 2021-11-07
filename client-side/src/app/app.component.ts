@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { CustomizationService, LoaderService, PepStyleType } from '@pepperi-addons/ngx-lib';
+import { PepCustomizationService, PepLoaderService, PepStyleType } from '@pepperi-addons/ngx-lib';
 
 @Component({
     selector: 'addon-root',
@@ -13,8 +13,8 @@ export class AppComponent implements OnInit {
     showLoading = false;
 
     constructor(
-        public customizationService: CustomizationService,
-        public loaderService: LoaderService) {
+        public customizationService: PepCustomizationService,
+        public loaderService: PepLoaderService) {
 
 
         this.loaderService.onChanged$
@@ -32,7 +32,7 @@ export class AppComponent implements OnInit {
     }
 
     getTopBarStyle() {
-        return document.documentElement.style.getPropertyValue(CustomizationService.STYLE_TOP_HEADER_KEY) as PepStyleType;
+        return document.documentElement.style.getPropertyValue(PepCustomizationService.STYLE_TOP_HEADER_KEY) as PepStyleType;
     }
 
     navigateHome() {

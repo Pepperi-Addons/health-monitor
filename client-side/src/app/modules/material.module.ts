@@ -44,7 +44,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTreeModule } from '@angular/material/tree';
 import { MatFormFieldModule } from '@angular/material/form-field';
 
-import { MAT_LABEL_GLOBAL_OPTIONS } from '@angular/material/core';
 const matComponentsModules = [
     MatAutocompleteModule,
     MatBadgeModule,
@@ -107,8 +106,7 @@ const matComponentsModules = [
         ScrollingModule,
         BidiModule,
         matComponentsModules
-    ],
-    providers: [{provide: MAT_LABEL_GLOBAL_OPTIONS, useValue: {float: 'never'}}],
+    ]
 })
 export class MaterialModule {}
 
