@@ -83,7 +83,7 @@
                 <pep-list-actions [actions]="menuActions" [sizeType]="'sm'" (actionClick)="onMenuItemClicked($event)"></pep-list-actions>
             </pep-top-bar>
         </div>
-        <div class="list-container" #listContainer>
+        <div class="list-container" #listContainer style="height: inherit;">
             <pep-list
                 [firstFieldAsLink]="false"
                 [isReport]="true"
