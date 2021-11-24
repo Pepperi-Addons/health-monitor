@@ -17,9 +17,9 @@ export class PepperiHealthMonitorSettingsComponent implements OnInit {
   @ViewChild(PepListComponent) customList: PepListComponent;
   tests;
   menuActions = [
-    { key: 'edit', value: 'Edit'}, 
-    { key: 'run_now', value: 'Run Now'}, 
-    { key: 'send_test_message', value: 'Send Test Message'}
+    { key: 'edit', text: 'Edit'}, 
+    { key: 'run_now', text: 'Run Now'}, 
+    { key: 'send_test_message', text: 'Send Test Message'}
   ];
   disableActions =true;
 
@@ -37,7 +37,8 @@ export class PepperiHealthMonitorSettingsComponent implements OnInit {
   ngOnInit() {
   }
 
-  onMenuItemClicked(action) {
+  onMenuItemClicked(event) {
+    const action = event.source;
     const typeListID = this.customList.getSelectedItemsData().rows[0];
     const typeData = this.customList.getItemDataByID(typeListID.toString());
     var typeID = typeData.Fields[0].AdditionalValue;

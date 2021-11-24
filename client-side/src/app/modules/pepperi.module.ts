@@ -21,6 +21,8 @@ import { PepSizeDetectorModule } from '@pepperi-addons/ngx-lib/size-detector';
 import { PepTextareaModule } from '@pepperi-addons/ngx-lib/textarea';
 import { PepTextboxModule } from '@pepperi-addons/ngx-lib/textbox';
 import { PepListModule } from '@pepperi-addons/ngx-lib/list';
+import { PepTopBarModule } from '@pepperi-addons/ngx-lib/top-bar';
+import { PepPageLayoutModule } from '@pepperi-addons/ngx-lib/page-layout';
 
 import {PepIconModule, PepIconRegistry,
     pepIconSystemBolt,
@@ -113,7 +115,9 @@ const pepperiComponentsModules = [
     PepSizeDetectorModule,
     PepTextareaModule,
     PepTextboxModule,
-    PepIconModule
+    PepIconModule,
+    PepTopBarModule,
+    PepPageLayoutModule
 ];
 
 import { TranslateModule, TranslateLoader, TranslateService } from '@ngx-translate/core';
