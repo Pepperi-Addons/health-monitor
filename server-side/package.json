@@ -28,8 +28,8 @@
         "typescript": "~3.8.0"
     },
     "dependencies": {
-        "@pepperi-addons/debug-server": "0.0.30",
-        "@pepperi-addons/papi-sdk": "^1.25.13",
+        "@pepperi-addons/debug-server": "0.0.32",
+        "@pepperi-addons/papi-sdk": "^1.30.0",
         "@types/node-fetch": "^2.5.7",
         "aws-sdk": "^2.908.0"
     }
