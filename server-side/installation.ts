@@ -568,10 +568,12 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
 
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
+
         let monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
         monitorLevel = (monitorLevel == false) ? 4 : monitorLevel;
         const interval = monitorLevel > 1 ? 15 : 5;
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
+        
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
         retVal["codeJobUUID"] = codeJob.UUID;

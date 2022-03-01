@@ -448,6 +448,18 @@ export async function send_test_message(client: Client, request: Request) {
     }
 };
 
+export async function var_settings_callback(client: Client, request: Request) {
+    if (request.method === 'POST') {
+        return var_get_updated_settings(client, request); // Updated values
+    }
+    else if (request.method === 'GET') {
+        return var_send_current_settings(client, request); // Send current values
+    }
+    else {
+        throw new Error(`Method ${request.method} is not supported`)
+    }
+}
+
 //#endregion
 
 //#region health monitor tests
