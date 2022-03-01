@@ -7,8 +7,7 @@
   "Endpoints": [
     "installation.ts",
     "api.ts",
-    "addon-usage.ts",
-    "api-success-monitor.ts"
+    "addon-usage.ts"
   ],
   "Editors": [
     "main"
