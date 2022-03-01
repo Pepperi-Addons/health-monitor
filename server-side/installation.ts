@@ -78,16 +78,6 @@ exports.install = async (client: Client, request: Request) => {
         }
         console.log('DailyAddonUsage codejob installed succeeded.');
 
-        /* // install PepperiUsageMonitor code job
-        let retValUsageMonitor = await InstallUsageMonitor(service);
-        successUsageMonitor = retValUsageMonitor.success;
-        errorMessage = "UsageMonitor installation failed on: " + retValUsageMonitor.errorMessage;
-        if (!successUsageMonitor){
-            console.error(errorMessage);
-            return retValUsageMonitor;
-        }
-        console.log('UsageMonitor codejob installed succeeded.'); */
-
         // from 2.1 addon settings on ADAL
         const bodyADAL: AddonDataScheme = {
             Name: 'HealthMonitorSettings',
@@ -212,7 +202,6 @@ exports.uninstall = async (client: Client, request: Request) => {
             "X-Pepperi-SecretKey": client.AddonSecretKey
         }
         const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge', null, headersADAL);
-        //const responsePepperiUsageMonitorTable = await service.papiClient.post('/addons/data/schemes/PepperiUsageMonitor/purge',null, headersADAL);
         const responseSettingsTable = await service.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge', null, headersADAL);
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
@@ -249,19 +238,6 @@ exports.upgrade = async (client: Client, request: Request) => {
         if (version.length == 3 && version[0] < 2) {
             const additionalData = addon.AdditionalData ? addon.AdditionalData : "";
             let data = JSON.parse(additionalData);
-
-            /* // install UsageMonitor if not installed yet from version 2.0
-            if (!data.UsageMonitorCodeJobUUID){         
-                let retValUsageMonitor = await InstallUsageMonitor(service);
-                let successUsageMonitor = retValUsageMonitor.success;
-                errorMessage = "DailyAddonUsage codejob installation failed on: " + retValUsageMonitor.errorMessage;
-                if (!successUsageMonitor){
-                    console.error(errorMessage);
-                    return retValUsageMonitor;
-                }
-                console.log('DailyAddonUsage codejob installed succeeded.');
-                data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
-            } */
 
             // upgrade to version 2.1.0 - move addon settings from additional data to ADAL
             const bodyADAL: AddonDataScheme = {
@@ -406,64 +382,6 @@ async function InstallDailyAddonUsage(monitorSettingsService: MonitorSettingsSer
         retVal = {
             success: false,
             errorMessage: errorMessage
-        };
-    }
-    return retVal;
-}
-
-async function InstallUsageMonitor(monitorSettingsService: MonitorSettingsService) {
-    let retVal = {
-        success: true,
-        errorMessage: ''
-    };
-
-    try {
-        // Install scheme for Pepperi Usage Monitor
-        try {
-            await monitorSettingsService.papiClient.addons.data.schemes.post(PepperiUsageMonitorTable);
-            console.log('PepperiUsageMonitor Table installed successfully.');
-        }
-        catch (error) {
-            const errorMessage = Utils.GetErrorDetailsSafe(error, 'message', 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor table failed.');
-
-            retVal = {
-                success: false,
-                errorMessage: errorMessage,
-            }
-        }
-
-        // Install code job for Pepperi Usage Monitor
-        try {
-            const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({
-                CodeJobName: "Pepperi Usage Monitor Addon Code Job",
-                Description: "Pepperi Usage Monitor",
-                Type: "AddonJob",
-                IsScheduled: true,
-                CronExpression: getCronExpression(),
-                AddonPath: "api-success-monitor",
-                FunctionName: "run_collect_data",
-                AddonUUID: monitorSettingsService.clientData.addonUUID,
-                NumberOfTries: 30,
-            });
-            retVal["codeJobName"] = 'UsageMonitorCodeJobUUID';
-            retVal["codeJobUUID"] = codeJob.UUID;
-            console.log('PepperiUsageMonitor code job installed successfully.');
-        }
-        catch (error) {
-            const errorMessage = Utils.GetErrorDetailsSafe(error, 'message', 'Could not install HealthMonitorAddon. Create PepperiUsageMonitor code job failed.');
-
-            retVal = {
-                success: false,
-                errorMessage: errorMessage,
-            }
-        }
-    }
-    catch (error) {
-        const errorMessage = Utils.GetErrorDetailsSafe(error, 'message', 'Cannot install HealthMonitorAddon (PepperiUsageMonitor). Unknown Error Occured');
-
-        retVal = {
-            success: false,
-            errorMessage: errorMessage,
         };
     }
     return retVal;
