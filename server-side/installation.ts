@@ -25,7 +25,6 @@ exports.install = async (client: Client, request: Request) => {
         let successDailyAddonUsage = true;
         let successUsageMonitor = true;
 
-        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const monitorSettingsService = new MonitorSettingsService(client);
 
         const bodyADAL1: AddonDataScheme = {
@@ -144,7 +143,6 @@ exports.install = async (client: Client, request: Request) => {
 
 exports.uninstall = async (client: Client, request: Request) => {
     try {
-        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MonitorSettingsService(client);
         const monitorSettings = await service.getMonitorSettings();
 
@@ -241,7 +239,6 @@ exports.upgrade = async (client: Client, request: Request) => {
     let success = true;
     let resultObject = {};
 
-    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const service = new MonitorSettingsService(client);
 
     try {
