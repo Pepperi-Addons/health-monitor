@@ -7,11 +7,12 @@ If the result of your code is 'false' then return:
 {success:false, errorMessage:{the reason why it is false}}
 The erroeMessage is importent! it will be written in the audit log and help the user to understand what happen
 */
-import { AddonDataScheme } from "@pepperi-addons/papi-sdk";
+import { AddonDataScheme, Relation } from "@pepperi-addons/papi-sdk";
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 import MonitorSettingsService from './monitor-settings.service';
+import VarRelationService from "./relations.var.service";
 
 
 exports.install = async (client: Client, request: Request) => {
@@ -27,6 +28,7 @@ exports.install = async (client: Client, request: Request) => {
 
         client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const monitorSettingsService = new MonitorSettingsService(client);
+        const relationVarSettingsService = new VarRelationService(client);
 
         const bodyADAL1: AddonDataScheme = {
             Name: 'HealthMonitorSettings',
@@ -125,6 +127,8 @@ exports.install = async (client: Client, request: Request) => {
         };
         const settingsResponse = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
         
+        await upsertVarSettingsRelation(relationVarSettingsService);
+
         console.log('HealthMonitorAddon installed succeeded.');
         return {
             success: success,
@@ -147,6 +151,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const service = new MonitorSettingsService(client);
         const monitorSettings = await service.getMonitorSettings();
+        const relationVarSettingsService = new VarRelationService(client);
 
         // unschedule SyncFailed test
         let syncFailedCodeJobUUID = monitorSettings.SyncFailedCodeJobUUID;
@@ -216,6 +221,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge', null, headersADAL);
         //const responsePepperiUsageMonitorTable = await service.papiClient.post('/addons/data/schemes/PepperiUsageMonitor/purge',null, headersADAL);
         const responseSettingsTable = await service.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge', null, headersADAL);
+        await upsertVarSettingsRelation(relationVarSettingsService, false);
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
 
@@ -243,7 +249,8 @@ exports.upgrade = async (client: Client, request: Request) => {
 
     client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const service = new MonitorSettingsService(client);
-
+    const relationVarSettingsService = new VarRelationService(client);
+    
     try {
         let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => { return Number(item) }) || [];
@@ -286,6 +293,8 @@ exports.upgrade = async (client: Client, request: Request) => {
                 Data: data
             };
             const settingsResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+            await upsertVarSettingsRelation(relationVarSettingsService);
+
             console.log('HealthMonitor upgrade from additional data to ADAL succeeded.');
         }
 
@@ -656,6 +665,16 @@ function getCronExpression() {
     ]
     const index = Math.floor(Math.random() * expressions.length);
     return expressions[index];
+}
+
+async function upsertVarSettingsRelation(varRelationService: VarRelationService, install: boolean = true) {
+    let relation = varRelationService.relation;
+    
+    if (!(install)) {
+        relation.Hidden = true;
+    }
+
+    return await varRelationService.papiClient.addons.data.relations.upsert(relation);
 }
 
 //#endregion

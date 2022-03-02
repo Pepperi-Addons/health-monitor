@@ -1,5 +1,6 @@
 import MonitorSettingsService from './monitor-settings.service'
 import RelationsService from './relations.service';
+import VarRelationService from './relations.var.service'
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
@@ -449,14 +450,23 @@ export async function send_test_message(client: Client, request: Request) {
 };
 
 export async function var_settings_callback(client: Client, request: Request) {
-    if (request.method === 'POST') {
-        return var_get_updated_settings(client, request); // Updated values
-    }
-    else if (request.method === 'GET') {
-        return var_send_current_settings(client, request); // Send current values
-    }
-    else {
-        throw new Error(`Method ${request.method} is not supported`)
+    const varRelationService: VarRelationService = new VarRelationService(client);
+
+    try {
+        if (request.method === 'POST') {
+            return varRelationService.var_get_updated_settings(client, request);
+        }
+        else if (request.method === 'GET') {
+            return varRelationService.var_send_current_settings(client, request);
+        }
+        else {
+            throw new Error(`Method ${request.method} is not supported`)
+        }
+    } 
+    catch (error) {
+        const errorMessage = Utils.GetErrorDetailsSafe(error);
+        console.error(errorMessage);
+        return `Error: ${errorMessage}`
     }
 }
 
