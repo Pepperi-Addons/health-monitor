@@ -1,22 +1,22 @@
 import { PapiClient, InstalledAddon } from '@pepperi-addons/papi-sdk'
 import { Client } from '@pepperi-addons/debug-server';
+import { ClientData } from './client-data'
 import jwtDecode from "jwt-decode";
 
-class MyService {
+class MonitorSettingsService {
 
     papiClient: PapiClient
+    clientData: ClientData
 
-    constructor(private client: Client) {
+    constructor(client: Client) {
         this.papiClient = new PapiClient({
             baseURL: client.BaseURL,
             token: client.OAuthAccessToken,
             addonUUID: client.AddonUUID,
             addonSecretKey: client.AddonSecretKey
         });
-    }
 
-    doSomething() {
-        console.log("doesn't really do anything....");
+        this.clientData = new ClientData(client.OAuthAccessToken, client.AddonUUID, client.AddonSecretKey);
     }
 
     getAddons(): Promise<InstalledAddon[]> {
@@ -24,16 +24,16 @@ class MyService {
     }
 
     async getMonitorSettings() {
-        const distributorID = jwtDecode(this.client.OAuthAccessToken)['pepperi.distributorid'].toString();
-        const addonUUID= this.client.AddonUUID;
+        const distributorID = jwtDecode(this.clientData.OAuthAccessToken)['pepperi.distributorid'].toString();
+        const addonUUID = this.clientData.addonUUID;
         const monitorSettings = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').key(distributorID).get();
         return monitorSettings.Data;
     }
-    
+
     async setMonitorSettings(data) {
-        const distributorID = jwtDecode(this.client.OAuthAccessToken)['pepperi.distributorid'].toString();
-        const addonUUID= this.client.AddonUUID;
-        const settingsBodyADAL= {
+        const distributorID = jwtDecode(this.clientData.OAuthAccessToken)['pepperi.distributorid'].toString();
+        const addonUUID = this.clientData.addonUUID;
+        const settingsBodyADAL = {
             Key: distributorID,
             Data: data
         };
@@ -42,4 +42,4 @@ class MyService {
     }
 }
 
-export default MyService;
+export default MonitorSettingsService;

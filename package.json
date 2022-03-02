@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd ./client-side && npm run build:single-spa:client-side && cd.. && cd ./server-side && npm run build && cd..",
-    "init": "npm install && cd ./server-side && npm install && cd.. && cd ./client-side && npm install && cd ..",
+    "build": "cd ./client-side && npm run build:single-spa:client-side && cd .. && cd ./server-side && npm run build && cd ..",
+    "init": "npm install && cd ./server-side && npm install && cd .. && cd ./client-side && npm install && cd ..",
     "publish-addon": "npm run build && publish-addon",
     "pub-addon": "publish-addon"
   },
