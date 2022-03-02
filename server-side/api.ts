@@ -31,7 +31,6 @@ const errors = {
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
-    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const monitorSettingsService = new MonitorSettingsService(client);
     let errorCode = '';
     let succeeded = false;
@@ -92,7 +91,6 @@ export async function sync_failed(client: Client, request: Request) {
 export async function job_limit_reached(client: Client, request: Request) {
     console.log('HealthMonitorAddon start JobLimitReached test');
     try {
-        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const monitorSettingsService = new MonitorSettingsService(client);
         const jobLimit = await JobLimitReachedTest(monitorSettingsService);
         return jobLimit;
@@ -111,7 +109,6 @@ export async function job_limit_reached(client: Client, request: Request) {
 export async function addon_limit_reached(client: Client, request: Request) {
     console.log('HealthMonitorAddon start AddonLimitReached test');
     try {
-        client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
         const monitorSettingsService = new MonitorSettingsService(client);
         const checkAddonsExecutionLimit = await AddonLimitReachedTest(monitorSettingsService);
         return checkAddonsExecutionLimit;
@@ -147,7 +144,6 @@ export async function job_execution_failed(client: Client, request: Request) {
 };
 
 export async function health_monitor_settings(client: Client, request: Request) {
-    client.AddonUUID = "7e15d4cc-55a7-4128-a9fe-0e877ba90069";
     const monitorSettingsService = new MonitorSettingsService(client);
 
     let monitorSettings = await monitorSettingsService.getMonitorSettings();
@@ -717,44 +713,33 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
         const auditLogsResult = await monitorSettingsService.papiClient.get("/audit_logs?where=AuditInfo.JobMessageData.IsScheduled=true and Status.ID=0 and ModificationDateTime>'" + intervalDate + "' and AuditInfo.JobMessageData.FunctionName!='monitor' and AuditInfo.JobMessageData.FunctionName!='sync_failed'&order_by=ModificationDateTime desc");
         const addons = await monitorSettingsService.papiClient.get('/addons?page_size=500');
 
-        if (auditLogsResult.length == 0) {
-            reports = "No new errors were found since " + intervalUTCDate + ".";
-            ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
-            console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
-            return {
-                success: true,
-                resultObject: reports
-            };
-        }
-        else {
-            reports = new Array();
-            for (var auditLog in auditLogsResult) {
-                if (auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData == undefined) {
-                    reports.push({
-                        "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
-                        "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
-                        "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
-                        "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
-                        "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
-                        "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
-                    });
-                }
-                else {
-                    const addonName = addons.filter(x => x.UUID == auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData.AddonUUID)[0].Name;
-                    reports.push({
-                        "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
-                        "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
-                        "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
-                        "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
-                        "AddonName": addonName,
-                        "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
-                        "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
-                    });
-                }
+        reports = new Array();
+        for (var auditLog in auditLogsResult) {
+            if (auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData == undefined) {
+                reports.push({
+                    "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
+                    "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
+                    "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
+                    "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
+                    "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
+                    "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
+                });
+            }
+            else {
+                const addonName = addons.filter(x => x.UUID == auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData.AddonUUID)[0].Name;
+                reports.push({
+                    "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
+                    "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
+                    "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
+                    "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
+                    "AddonName": addonName,
+                    "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
+                    "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
+                });
             }
         }
 
-        // Relations entry point
+        // Calling all the addons that subscribed to HealthMonitor relation
         const errorsFromHostees = await relationsService.getErrorsFromHostees(monitorSettingsService, monitorSettingsService);
         reports.push(...errorsFromHostees);
 

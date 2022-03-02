@@ -5,7 +5,7 @@ export module Utils {
         try {
             if (error instanceof Error) {
                 if (field in error) {
-                    return error.message;
+                    return error[field];
                 }
             }
         }

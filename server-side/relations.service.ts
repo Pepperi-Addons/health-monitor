@@ -18,7 +18,7 @@ export interface HosteesData {
     [key: string]: any
 }
 
-function instanceOfHosteesData(object: any): object is HosteesData {
+function IsInstanceOfHosteesData(object: any): object is HosteesData {
     let isValid = true;
 
     isValid = isValid && 'Code' in object;
@@ -96,7 +96,7 @@ export class RelationsService {
         }
 
         // Validating reponse
-        if (!instanceOfHosteesData(response)) {
+        if (!IsInstanceOfHosteesData(response)) {
             const errorJson = {
                 RelationName: relation.Name,
                 AddonUUID: relation.AddonUUID,
