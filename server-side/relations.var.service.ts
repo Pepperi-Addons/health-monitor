@@ -1,6 +1,7 @@
 import { PapiClient, InstalledAddon, Relation } from '@pepperi-addons/papi-sdk'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
+import { GetMonitorCronExpression } from './installation';
 
 interface FieldData {
     Id: string,
@@ -48,7 +49,7 @@ export class VarRelationService {
             AddonUUID: client.AddonUUID,
             RelationName: "VarSettings",
             Type: "AddonAPI",
-            Description: "test-test-test",
+            Description: "Health Monitor relation to Var Settings, Var users can edit monitor settings via the Var addon",
             AddonRelativeURL: "/api/var_settings_callback",
     
             AdditionalParams: {
@@ -78,11 +79,15 @@ export class VarRelationService {
         const settings = request.body as SettingsData;
         const monitorSettingsService = new MonitorSettingsService(client);
     
-        const data = {};
+        
         const fieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
         const monitorLevelValue = parseInt(fieldData.Value);
+        
+        // Update cron expression
+        await this.updateCronExpression(monitorSettingsService, monitorLevelValue);
+
+        const data = {};
         data['MonitorLevel'] = monitorLevelValue;
-    
         return await monitorSettingsService.setMonitorSettings(data);
     };
     
@@ -99,6 +104,19 @@ export class VarRelationService {
             ]
         }
     };
+
+    async updateCronExpression(monitorSettingsService: MonitorSettingsService, monitorLevelValue: number) {
+        const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
+        const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
+        const cronExpression = GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, monitorLevelValue)          
+
+        const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({
+            UUID: (await monitorSettingsService.getMonitorSettings()).SyncFailedCodeJobUUID,
+            CronExpression: cronExpression,
+        } as any); // Using "as any" to avoid filling all fields.
+
+        console.log("result object recieved from Code jobs is: " + JSON.stringify(codeJob));
+    }
 }
 
 export default VarRelationService;

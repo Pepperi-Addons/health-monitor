@@ -450,9 +450,11 @@ export async function var_settings_callback(client: Client, request: Request) {
 
     try {
         if (request.method === 'POST') {
+            // Getting updated values from Var settings
             return varRelationService.var_get_updated_settings(client, request);
         }
         else if (request.method === 'GET') {
+            // Sending updated values to Var settings
             return varRelationService.var_send_current_settings(client, request);
         }
         else {
@@ -462,7 +464,7 @@ export async function var_settings_callback(client: Client, request: Request) {
     catch (error) {
         const errorMessage = Utils.GetErrorDetailsSafe(error);
         console.error(errorMessage);
-        return `Error: ${errorMessage}`
+        throw error;
     }
 }
 

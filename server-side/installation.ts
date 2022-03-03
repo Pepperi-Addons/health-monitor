@@ -26,6 +26,7 @@ exports.install = async (client: Client, request: Request) => {
         let successDailyAddonUsage = true;
         let successUsageMonitor = true;
 
+        const defaultMonitorVale = 4;
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationVarSettingsService = new VarRelationService(client);
 
@@ -94,12 +95,11 @@ exports.install = async (client: Client, request: Request) => {
 
         const data = {};
         const distributor = await GetDistributor(monitorSettingsService.papiClient);
-        const monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
         const memoryUsageLimit = await monitorSettingsService.papiClient.get('/meta_data/flags/MemoryUsageLimit');
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = (monitorLevel == false) ? 4 : monitorLevel;
+        data["MonitorLevel"] = defaultMonitorVale;
         data["MemoryUsageLimit"] = (memoryUsageLimit == false) ? 5000000 : memoryUsageLimit;
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -137,14 +137,14 @@ exports.install = async (client: Client, request: Request) => {
 
 exports.uninstall = async (client: Client, request: Request) => {
     try {
-        const service = new MonitorSettingsService(client);
-        const monitorSettings = await service.getMonitorSettings();
+        const monitorSettingsService = new MonitorSettingsService(client);
+        const monitorSettings = await monitorSettingsService.getMonitorSettings();
         const relationVarSettingsService = new VarRelationService(client);
 
         // unschedule SyncFailed test
         let syncFailedCodeJobUUID = monitorSettings.SyncFailedCodeJobUUID;
         if (syncFailedCodeJobUUID != null && syncFailedCodeJobUUID != '') {
-            await service.papiClient.codeJobs.upsert({
+            await monitorSettingsService.papiClient.codeJobs.upsert({
                 UUID: syncFailedCodeJobUUID,
                 CodeJobName: "SyncFailed Test",
                 IsScheduled: false,
@@ -156,7 +156,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         // unschedule JobLimitReached test
         let jobLimitReachedCodeJobUUID = monitorSettings.JobLimitReachedCodeJobUUID
         if (jobLimitReachedCodeJobUUID != null && jobLimitReachedCodeJobUUID != '') {
-            await service.papiClient.codeJobs.upsert({
+            await monitorSettingsService.papiClient.codeJobs.upsert({
                 UUID: jobLimitReachedCodeJobUUID,
                 CodeJobName: "JobLimitReached Test",
                 IsScheduled: false,
@@ -168,7 +168,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         // unschedule JobExecutionFailed test
         let jobExecutionFailedCodeJobUUID = monitorSettings.JobExecutionFailedCodeJobUUID;
         if (jobExecutionFailedCodeJobUUID != null && jobExecutionFailedCodeJobUUID != '') {
-            await service.papiClient.codeJobs.upsert({
+            await monitorSettingsService.papiClient.codeJobs.upsert({
                 UUID: jobExecutionFailedCodeJobUUID,
                 CodeJobName: "JobExecutionFailed Test",
                 IsScheduled: false,
@@ -180,7 +180,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         // unschedule DailyAddonUsage
         let dailyAddonUsageCodeJobUUID = monitorSettings.DailyAddonUsageCodeJobUUID;
         if (dailyAddonUsageCodeJobUUID != null && dailyAddonUsageCodeJobUUID != '') {
-            await service.papiClient.codeJobs.upsert({
+            await monitorSettingsService.papiClient.codeJobs.upsert({
                 UUID: dailyAddonUsageCodeJobUUID,
                 CodeJobName: "DailyAddonUsage",
                 IsScheduled: false,
@@ -206,8 +206,8 @@ exports.uninstall = async (client: Client, request: Request) => {
             "X-Pepperi-OwnerID": client.AddonUUID,
             "X-Pepperi-SecretKey": client.AddonSecretKey
         }
-        const responseDailyAddonUsageTable = await service.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge', null, headersADAL);
-        const responseSettingsTable = await service.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge', null, headersADAL);
+        const responseDailyAddonUsageTable = await monitorSettingsService.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge', null, headersADAL);
+        const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge', null, headersADAL);
         await upsertVarSettingsRelation(relationVarSettingsService, false);
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
@@ -407,7 +407,7 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
     Type: "data"
 }
 
-function GetMonitorCronExpression(token, maintenanceWindowHour, interval) {
+export function GetMonitorCronExpression(token, maintenanceWindowHour, interval) {
     // rand is integet between 0-4 included.
     const rand = (jwtDecode(token)['pepperi.distributorid']) % interval;
     const minute = rand + "-59/" + interval;
