@@ -143,7 +143,7 @@ exports.uninstall = async (client: Client, request: Request) => {
 
         // unschedule SyncFailed test
         let syncFailedCodeJobUUID = monitorSettings.SyncFailedCodeJobUUID;
-        if (syncFailedCodeJobUUID != '') {
+        if (syncFailedCodeJobUUID != null && syncFailedCodeJobUUID != '') {
             await service.papiClient.codeJobs.upsert({
                 UUID: syncFailedCodeJobUUID,
                 CodeJobName: "SyncFailed Test",
@@ -155,7 +155,7 @@ exports.uninstall = async (client: Client, request: Request) => {
 
         // unschedule JobLimitReached test
         let jobLimitReachedCodeJobUUID = monitorSettings.JobLimitReachedCodeJobUUID
-        if (jobLimitReachedCodeJobUUID != '') {
+        if (jobLimitReachedCodeJobUUID != null && jobLimitReachedCodeJobUUID != '') {
             await service.papiClient.codeJobs.upsert({
                 UUID: jobLimitReachedCodeJobUUID,
                 CodeJobName: "JobLimitReached Test",
@@ -167,7 +167,7 @@ exports.uninstall = async (client: Client, request: Request) => {
 
         // unschedule JobExecutionFailed test
         let jobExecutionFailedCodeJobUUID = monitorSettings.JobExecutionFailedCodeJobUUID;
-        if (jobExecutionFailedCodeJobUUID != '') {
+        if (jobExecutionFailedCodeJobUUID != null && jobExecutionFailedCodeJobUUID != '') {
             await service.papiClient.codeJobs.upsert({
                 UUID: jobExecutionFailedCodeJobUUID,
                 CodeJobName: "JobExecutionFailed Test",
@@ -179,7 +179,7 @@ exports.uninstall = async (client: Client, request: Request) => {
 
         // unschedule DailyAddonUsage
         let dailyAddonUsageCodeJobUUID = monitorSettings.DailyAddonUsageCodeJobUUID;
-        if (dailyAddonUsageCodeJobUUID != '') {
+        if (dailyAddonUsageCodeJobUUID != null && dailyAddonUsageCodeJobUUID != '') {
             await service.papiClient.codeJobs.upsert({
                 UUID: dailyAddonUsageCodeJobUUID,
                 CodeJobName: "DailyAddonUsage",
@@ -266,10 +266,11 @@ exports.upgrade = async (client: Client, request: Request) => {
                 Data: data
             };
             const settingsResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
-            await upsertVarSettingsRelation(relationVarSettingsService);
 
             console.log('HealthMonitor upgrade from additional data to ADAL succeeded.');
         }
+
+        await upsertVarSettingsRelation(relationVarSettingsService);
 
         console.log('HealthMonitorAddon upgrade succeeded.');
         return {

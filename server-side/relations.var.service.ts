@@ -80,8 +80,7 @@ export class VarRelationService {
     
         const data = {};
         const fieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
-        const monitorLevelStringValue = fieldData.Value;
-        const monitorLevelValue = parseInt(monitorLevelStringValue);
+        const monitorLevelValue = parseInt(fieldData.Value);
         data['MonitorLevel'] = monitorLevelValue;
     
         return await monitorSettingsService.setMonitorSettings(data);
