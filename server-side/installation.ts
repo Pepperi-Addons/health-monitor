@@ -26,7 +26,7 @@ exports.install = async (client: Client, request: Request) => {
         let successDailyAddonUsage = true;
         let successUsageMonitor = true;
 
-        const defaultMonitorVale = 4;
+        const defaultMonitorValue = 4;
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationVarSettingsService = new VarRelationService(client);
 
@@ -99,7 +99,7 @@ exports.install = async (client: Client, request: Request) => {
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = defaultMonitorVale;
+        data["MonitorLevel"] = defaultMonitorValue;
         data["MemoryUsageLimit"] = (memoryUsageLimit == false) ? 5000000 : memoryUsageLimit;
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
