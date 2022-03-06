@@ -18,6 +18,7 @@ export interface HosteesData {
     [key: string]: any
 }
 
+//todo: Change to new interface
 function IsInstanceOfHosteesData(object: any): object is HosteesData {
     let isValid = true;
 

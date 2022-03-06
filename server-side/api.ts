@@ -6,6 +6,7 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
+import { ErrorInterface } from './error.interface';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -705,10 +706,11 @@ export async function JobLimitReachedTest(monitorSettingsService) {
 export async function JobExecutionFailedTest(monitorSettingsService: any, relationsService: any) {
     console.log("HealthMonitorAddon, JobExecutionFailedTest start");
     let innerMessage;
-    let reports;
+    let reports: Array<ErrorInterface>;
 
     try {
         let monitorSettings = await monitorSettingsService.getMonitorSettings();
+        const distributorCache = await GetDistributorCache(monitorSettingsService, monitorSettings);
         const interval = monitorSettings.JobExecutionFailed.Interval;
         const intervalDate = new Date(Date.now() - interval).toISOString();
         const intervalUTCDate = new Date(Date.now() - interval).toUTCString();
@@ -717,28 +719,23 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
 
         reports = new Array();
         for (var auditLog in auditLogsResult) {
-            if (auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData == undefined) {
-                reports.push({
-                    "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
-                    "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
-                    "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
-                    "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
-                    "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
-                    "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
-                });
+
+            const reportAsInterface: ErrorInterface = {
+                DistributorID: distributorCache.InternalID,
+                Name: distributorCache.Name,
+                Code: "JOB-EXECUTION-REPORT",
+                Type: "JOB-EXECUTION-FAILED",
+                GeneralErrorMessage: errors["JOB-EXECUTION-REPORT"]["Message"],
+                InternalErrors: [
+                    {
+                        ActionUUID: auditLogsResult[auditLog].AuditInfo.JobMessageData.UUID,
+                        CreationDateTime: auditLogsResult[auditLog].CreationDateTime,
+                        ErrorMessage: auditLogsResult[auditLog].AuditInfo.ErrorMessage
+                    }
+                ]
             }
-            else {
-                const addonName = addons.filter(x => x.UUID == auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData.AddonUUID)[0].Name;
-                reports.push({
-                    "CreationDateTime": auditLogsResult[auditLog].CreationDateTime,
-                    "CodeJobName": auditLogsResult[auditLog].AuditInfo.JobMessageData.CodeJobName,
-                    "NumberOfTry": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTry,
-                    "NumberOfTries": auditLogsResult[auditLog].AuditInfo.JobMessageData.NumberOfTries,
-                    "AddonName": addonName,
-                    "FunctionName": auditLogsResult[auditLog].AuditInfo.JobMessageData.FunctionName,
-                    "ErrorMessage": auditLogsResult[auditLog].AuditInfo.ErrorMessage,
-                });
-            }
+            reports.push(reportAsInterface);
+
         }
 
         // Calling all the addons that subscribed to HealthMonitor relation
@@ -756,7 +753,7 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
         }
 
         innerMessage = JSON.stringify(reports);
-        ReportError(monitorSettingsService, await GetDistributorCache(monitorSettingsService, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+        ReportError(monitorSettingsService, distributorCache, "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
 
         console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
         return {
@@ -823,6 +820,7 @@ async function ReportError(monitorSettingsService: MonitorSettingsService, distr
 }
 
 async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage = "") {
+    //TODO: fix string to mactch new error interface
     let error = "";
     error = 'DistributorID: ' + distributor.InternalID + '\n\rName: ' + distributor.Name + '\n\rMachine and Port: ' + distributor.MachineAndPort + '\n\rType: ' + type + '\n\rCode: ' + errorCode + '\n\rMessage: ' + errors[errorCode]["Message"] + '\n\rInnerMessage: ' + innerMessage;
 
