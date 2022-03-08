@@ -706,7 +706,6 @@ export async function JobLimitReachedTest(monitorSettingsService) {
 export async function JobExecutionFailedTest(monitorSettingsService: any, relationsService: any) {
     console.log("HealthMonitorAddon, JobExecutionFailedTest start");
     let innerMessage;
-    let reports: Array<ErrorInterface>;
 
     try {
         let monitorSettings = await monitorSettingsService.getMonitorSettings();
@@ -717,7 +716,6 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
         const auditLogsResult = await monitorSettingsService.papiClient.get("/audit_logs?where=AuditInfo.JobMessageData.IsScheduled=true and Status.ID=0 and ModificationDateTime>'" + intervalDate + "' and AuditInfo.JobMessageData.FunctionName!='monitor' and AuditInfo.JobMessageData.FunctionName!='sync_failed'&order_by=ModificationDateTime desc");
         const type = "JOB-EXECUTION-FAILED";
         const code = "JOB-EXECUTION-REPORT";
-
         const reports: ErrorInterface[] = new Array();
 
         const reportAsInterface: ErrorInterface = {
@@ -825,23 +823,17 @@ async function validateBeforeTest(monitorSettingsService, monitorSettings) {
 
 async function ReportError(monitorSettingsService: MonitorSettingsService, distributor, errorCode, type, innerMessage = "", htmlTable = "", addonUUID = "", generalErrorMessage = "") {
     const environmant = jwtDecode(monitorSettingsService.clientData.OAuthAccessToken)["pepperi.datacenter"];
-    
-    try {
-        // report error to log
-        const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
 
-        // report error to teams on System Status chanel
-        ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage, htmlTable, addonUUID, generalErrorMessage);
+    // report error to log
+    const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
 
-        // report error to webhook
-        ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
+    // report error to teams on System Status chanel
+    ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage, htmlTable, addonUUID, generalErrorMessage);
 
-        return errorMessage;
-    } catch (error) {
-        console.error(error);
-        return "";
-    }
+    // report error to webhook
+    ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
+    return errorMessage;
 }
 
 async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage = "", generalErrorMessage = "") {
