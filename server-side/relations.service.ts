@@ -3,37 +3,7 @@ import { Client } from '@pepperi-addons/debug-server'
 import { Relation } from '@pepperi-addons/papi-sdk';
 import MonitorSettingsService from './monitor-settings.service'
 import { Utils } from './utils.service';
-
-interface HosteesInternalErrors {
-    ErrorMessage: string,
-    ActionUUID?: string,
-    CreationDateTime?: string
-}
-
-export interface HosteesData {
-    Code: string,
-    Type: string,
-    GeneralErrorMessage: string,
-    InternalErrors?: HosteesInternalErrors[],
-    [key: string]: any
-}
-
-function IsInstanceOfHosteesData(object: any): object is HosteesData {
-    let isValid = true;
-
-    isValid = isValid && 'Code' in object;
-    isValid = isValid && 'Type' in object;
-    isValid = isValid && 'GeneralErrorMessage' in object;
-
-    if ('InternalErrors' in object) {
-        object.InternalErrors.forEach(internalError => {
-            isValid = isValid && 'ErrorMessage' in internalError;
-            if (isValid === false) { return isValid; }
-        });
-    }
-
-    return isValid;
-}
+import { ErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 
 export class RelationsService {
 
@@ -55,13 +25,13 @@ export class RelationsService {
         return this.papiClient.addons.installedAddons.find({});
     }
 
-    async getErrorsFromHostees(monitorSettingsService: MonitorSettingsService): Promise<any> {
-        let hosteesErrors: any[] = new Array;
+    async getErrorsFromHostees(monitorSettingsService: MonitorSettingsService, distributorCache): Promise<ErrorInterface[]> {
+        let hosteesErrors: ErrorInterface[] = new Array;
         let getErrorTasks: Promise<any>[] = new Array;
 
         const relations = await this.papiClient.addons.data.relations.iter({ where: "RelationName='HealthMonitor'" });
         for await (const relation of relations) {
-            getErrorTasks.push(this.createRelationPromise(relation));
+            getErrorTasks.push(this.createRelationPromise(relation, distributorCache));
         }
 
         await Promise.all(getErrorTasks).then(results => {
@@ -71,10 +41,10 @@ export class RelationsService {
         return hosteesErrors;
     }
 
-    createRelationPromise(relation: Relation): Promise<any> {
+    createRelationPromise(relation: Relation, distributorCache): Promise<ErrorInterface | null> {
         return new Promise(async (resolve) => {
             try {
-                const hosteesData = await this.callHostees(relation);
+                const hosteesData = await this.callHostees(relation, distributorCache);
                 resolve(hosteesData);
             }
             catch (error) {
@@ -86,7 +56,7 @@ export class RelationsService {
         });
     }
 
-    async callHostees(relation: Relation): Promise<HosteesData> {
+    async callHostees(relation: Relation, distributorCache): Promise<ErrorInterface> {
         const url = `/addons/api/${relation.AddonUUID}${relation.AddonRelativeURL?.startsWith('/') ? relation.AddonRelativeURL : '/' + relation.AddonRelativeURL}`;
         const response = await this.papiClient.get(url);
 
@@ -95,8 +65,12 @@ export class RelationsService {
             response['Type'] = this.defaultTypeValue;
         }
 
+        response['Name'] = distributorCache.Name;
+        response['DistributorID'] = distributorCache.InternalID;
+        response['AddonUUID'] = relation.AddonUUID;
+
         // Validating reponse
-        if (!IsInstanceOfHosteesData(response)) {
+        if (!IsInstanceOfErrorInterface(response)) {
             const errorJson = {
                 RelationName: relation.Name,
                 AddonUUID: relation.AddonUUID,
@@ -105,7 +79,7 @@ export class RelationsService {
             throw new Error(`${JSON.stringify(errorJson)}`)
         }
 
-        return response as HosteesData;
+        return response as ErrorInterface;
     }
 }
 
