@@ -6,7 +6,7 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
-import { ErrorInterface } from './error.interface';
+import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -715,36 +715,51 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
         const intervalDate = new Date(Date.now() - interval).toISOString();
         const intervalUTCDate = new Date(Date.now() - interval).toUTCString();
         const auditLogsResult = await monitorSettingsService.papiClient.get("/audit_logs?where=AuditInfo.JobMessageData.IsScheduled=true and Status.ID=0 and ModificationDateTime>'" + intervalDate + "' and AuditInfo.JobMessageData.FunctionName!='monitor' and AuditInfo.JobMessageData.FunctionName!='sync_failed'&order_by=ModificationDateTime desc");
-        const addons = await monitorSettingsService.papiClient.get('/addons?page_size=500');
+        const type = "JOB-EXECUTION-FAILED";
+        const code = "JOB-EXECUTION-REPORT";
 
-        reports = new Array();
+        const reports: ErrorInterface[] = new Array();
+
+        const reportAsInterface: ErrorInterface = {
+            DistributorID: distributorCache.InternalID,
+            Name: distributorCache.Name,
+            Code: code,
+            Type: type,
+            AddonUUID: "",
+            GeneralErrorMessage: errors[code]["Message"],
+            InternalErrors: []
+        }
+        let reportsDetails: InnerErrorInterface[] = new Array();
+                           
+        // In the reports array, all audit logs are one report, and each relation error is a report.
         for (var auditLog in auditLogsResult) {
+            // Reformating the time stamp
+            let creationDateTime = auditLogsResult[auditLog].CreationDateTime as string;
+            creationDateTime = creationDateTime.replace('T', ' ').replace('Z', '').replace(/\..+/, '');
 
-            const reportAsInterface: ErrorInterface = {
-                DistributorID: distributorCache.InternalID,
-                Name: distributorCache.Name,
-                Code: "JOB-EXECUTION-REPORT",
-                Type: "JOB-EXECUTION-FAILED",
-                GeneralErrorMessage: errors["JOB-EXECUTION-REPORT"]["Message"],
-                InternalErrors: [
-                    {
-                        ActionUUID: auditLogsResult[auditLog].AuditInfo.JobMessageData.UUID,
-                        CreationDateTime: auditLogsResult[auditLog].CreationDateTime,
-                        ErrorMessage: auditLogsResult[auditLog].AuditInfo.ErrorMessage
-                    }
-                ]
+            const reportDetails: InnerErrorInterface = {
+                ActionUUID: auditLogsResult[auditLog].AuditInfo.JobMessageData.UUID,
+                CreationDateTime: creationDateTime,
+                ErrorMessage: `Addon UUID: ${auditLogsResult[auditLog].AuditInfo.JobMessageData.AddonData.AddonUUID}\n Error Message: ${auditLogsResult[auditLog].AuditInfo.ErrorMessage}`,
             }
-            reports.push(reportAsInterface);
+            reportsDetails.push(reportDetails);
 
+        }
+        reportAsInterface.InternalErrors = reportsDetails;
+
+        if (IsInstanceOfErrorInterface(reportAsInterface)) {
+            reports.push(reportAsInterface);
+        } else {
+            console.error(`Invalid error details from audit: ${JSON.stringify(reportAsInterface)}`);
         }
 
         // Calling all the addons that subscribed to HealthMonitor relation
-        const errorsFromHostees = await relationsService.getErrorsFromHostees(monitorSettingsService, monitorSettingsService);
+        const errorsFromHostees: [ErrorInterface] = await relationsService.getErrorsFromHostees(monitorSettingsService, distributorCache);
         reports.push(...errorsFromHostees);
 
         if (reports.length == 0) {
             const reportMessage = "No new errors were found since " + intervalUTCDate + ".";
-            ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+            ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), code, type, innerMessage);
             console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
             return {
                 success: true,
@@ -752,8 +767,14 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
             };
         }
 
-        innerMessage = JSON.stringify(reports);
-        ReportError(monitorSettingsService, distributorCache, "JOB-EXECUTION-REPORT", "JOB-EXECUTION-FAILED", innerMessage);
+        reports.forEach(async report => {
+            let resultTable = ""
+            if ('InternalErrors' in report) {
+                resultTable = ErrorInterfaceToHtmlTable(report.InternalErrors!);
+            }
+            const errorString = JSON.stringify(report.InternalErrors);
+            await ReportError(monitorSettingsService, distributorCache, report.Code, report.Type, errorString, resultTable, report.AddonUUID, report.GeneralErrorMessage);
+        });
 
         console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
         return {
@@ -802,47 +823,40 @@ async function validateBeforeTest(monitorSettingsService, monitorSettings) {
     return true;
 }
 
-async function ReportError(monitorSettingsService: MonitorSettingsService, distributor, errorCode, type, innerMessage = "") {
+async function ReportError(monitorSettingsService: MonitorSettingsService, distributor, errorCode, type, innerMessage = "", htmlTable = "", addonUUID = "", generalErrorMessage = "") {
     const environmant = jwtDecode(monitorSettingsService.clientData.OAuthAccessToken)["pepperi.datacenter"];
-    // report error to log
-    const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage);
+    
+    try {
+        // report error to log
+        const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
 
-    // report error to teams on System Status chanel
-    ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage);
+        // report error to teams on System Status chanel
+        ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage, htmlTable, addonUUID, generalErrorMessage);
 
-    // report error to webhook
-    ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage);
+        // report error to webhook
+        ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
-    // report error to admin email
-    //ReportErrorEmail(distributor, errorCode, type, innerMessage);
+        return errorMessage;
+    } catch (error) {
+        console.error(error);
+        return "";
+    }
 
-    return errorMessage;
 }
 
-async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage = "") {
-    //TODO: fix string to mactch new error interface
+async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage = "", generalErrorMessage = "") {
     let error = "";
-    error = 'DistributorID: ' + distributor.InternalID + '\n\rName: ' + distributor.Name + '\n\rMachine and Port: ' + distributor.MachineAndPort + '\n\rType: ' + type + '\n\rCode: ' + errorCode + '\n\rMessage: ' + errors[errorCode]["Message"] + '\n\rInnerMessage: ' + innerMessage;
-
-    if (errorCode == 'SUCCESS')
-        console.log(error);
-    else
-        console.error(error);
+    const generalMessage = (generalErrorMessage == "" && errorCode in errors) ? errors[errorCode]["Message"] : generalErrorMessage;
+    error = 'DistributorID: ' + distributor.InternalID
+    + '\n\rName: ' + distributor.Name 
+    + '\n\rType: ' + type 
+    + '\n\rCode: ' + errorCode 
+    + '\n\rGeneralErrorMessage: ' + generalMessage
+    + '\n\InternalErrors: ' + innerMessage;
+    
+    errorCode == 'SUCCESS' ? console.log(error) : console.error(error);
     return error;
 }
-
-/*export async function ReportErrorTeamsDriver(client: Client, request: Request){
-    const monitorSettingsService = new MonitorSettingsService(client);
-    //const environmant = 'sandbox';//jwtDecode(service.client.OAuthAccessToken)["pepperi.datacenter"];
-    const environmant = 'production';
-    const distributor = await GetDistributor(monitorSettingsService);
-    const errorCode = "SYNC-CALL-FAILED";
-    //const errorCode = "SUCCESS";
-    const type = "JOB-EXECUTION-FAILED";
-    const innerMessage = "Test by Amir F.";
-
-    ReportErrorTeams(environmant, distributor, errorCode, type, innerMessage);
-}*/
 
 export async function ReportErrorTeamsDriver(client: Client, request: Request) {
     const service = new MonitorSettingsService(client);
@@ -857,10 +871,10 @@ export async function ReportErrorTeamsDriver(client: Client, request: Request) {
     ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage);
 }
 
-async function ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage = "") {
+async function ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage = "", htmlTable = "", addonUUID = "", generalErrorMessage = "") {
     let url = '';
     let body = {
-        themeColor: errors[errorCode]["Color"],
+        themeColor: errorCode in errors ? errors[errorCode]["Color"] : 'FF0000',
         Summary: distributor.InternalID + " - " + distributor.Name,
         sections: [{
             facts: [{
@@ -870,22 +884,26 @@ async function ReportErrorTeams(monitorSettingsService, environmant, distributor
                 name: "Name",
                 value: distributor.Name
             }, {
-                name: "Machine and Port",
-                value: distributor.MachineAndPort
-            }, {
                 name: "Code",
                 value: errorCode
             }, {
                 name: "Type",
                 value: type
             }, {
-                name: "Message",
-                value: errors[errorCode]["Message"]
+                name: "Addon UUID",
+                value: addonUUID
             }, {
-                name: "Inner Message",
-                value: innerMessage
+                name: "General Error Message",
+                value: (generalErrorMessage == "" && errorCode in errors) ? errors[errorCode]["Message"] : generalErrorMessage
+            }, {
+                name: "Internal Errors",
+                value: htmlTable == "" ? innerMessage : "See below"
             }],
             "markdown": true
+        },
+        {
+            "startGroup": true,
+            "text": htmlTable
         }],
     };
     let unite = false;
@@ -962,7 +980,7 @@ async function ReportErrorTeams(monitorSettingsService, environmant, distributor
     });
 }
 
-async function ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage = "") {
+async function ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage = "", generalErrorMessage = "") {
     //need to decide which errors the admin can get
     let url = "";
     let testType = "";
@@ -986,7 +1004,7 @@ async function ReportErrorWebhook(monitorSettingsService, errorCode, type, inner
     }
 
     if (innerMessage == "") {
-        innerMessage = errors[errorCode]["Message"];
+        innerMessage = (generalErrorMessage == "" && errorCode in errors) ? errors[errorCode]["Message"] : generalErrorMessage
     }
 
     const body = {

@@ -1,7 +1,9 @@
-interface InnerErrorInterface {
+import tableif from "tableify"
+
+export interface InnerErrorInterface {
     ActionUUID?: string,
     CreationDateTime?: string,
-    ErrorMessage: string
+    ErrorMessage: string,
 }
 
 export interface ErrorInterface {
@@ -9,12 +11,13 @@ export interface ErrorInterface {
     Name: string, 
     Code: string,
     Type: string,
+    AddonUUID?: string
     GeneralErrorMessage: string,
     InternalErrors?: InnerErrorInterface[],
     [key: string]: any
 }
 
-function IsInstanceOfHosteesData(object: any): object is ErrorInterface {
+export function IsInstanceOfErrorInterface(object: any): object is ErrorInterface {
     let isValid = true;
 
     isValid = isValid && 'Code' in object;
@@ -31,4 +34,19 @@ function IsInstanceOfHosteesData(object: any): object is ErrorInterface {
     }
 
     return isValid;
+}
+
+export function ErrorInterfaceToHtmlTable(errorArray: InnerErrorInterface[]): string {
+    let tableObject = new Array();
+
+    errorArray!.forEach(errorData => {
+        tableObject.push({
+            CreationDateTime: errorData.CreationDateTime,
+            ActionUUID: errorData.ActionUUID,
+            ErrorMessage: errorData.ErrorMessage
+        });
+    });
+
+    const htmlTable = tableif(tableObject);
+    return htmlTable;
 }
