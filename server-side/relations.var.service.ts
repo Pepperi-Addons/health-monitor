@@ -31,7 +31,10 @@ function instanceOfSettingsData(object: any): object is SettingsData {
 export class VarRelationService {
 
     papiClient: PapiClient;
-    readonly monitorLevelSettingId: string
+    readonly monitorLevelSettingId: string;
+    readonly addonDailyUsageId: string;
+    addonDailyUsageValue: number = 1000;
+
     readonly relation: Relation;
 
     constructor(client: Client) {
@@ -43,7 +46,7 @@ export class VarRelationService {
         });
 
         this.monitorLevelSettingId = '0';
-        
+        this.addonDailyUsageId = '1';
         this.relation = {
             Name: "HealthMonitorVarSettings",
             AddonUUID: client.AddonUUID,
@@ -57,6 +60,12 @@ export class VarRelationService {
                 Fields: [{
                     Id: this.monitorLevelSettingId,
                     Label: "Monitor Level",
+                    PepComponent: "textbox",
+                    Type: "int",
+                    Disabled: false
+                }, {
+                    Id: this.addonDailyUsageId,
+                    Label: "Addon Daily Usage Limit",
                     PepComponent: "textbox",
                     Type: "int",
                     Disabled: false
@@ -78,11 +87,12 @@ export class VarRelationService {
         }
         const settings = request.body as SettingsData;
         const monitorSettingsService = new MonitorSettingsService(client);
-    
         
-        const fieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
-        const monitorLevelValue = parseInt(fieldData.Value);
-        
+        const monitorLevelFieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
+        const addonDailyUsageFieldData: FieldData = (settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData);
+        const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
+        this.addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value); //todo: Save this value in DB for future runs!
+
         // Update cron expression
         await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
 

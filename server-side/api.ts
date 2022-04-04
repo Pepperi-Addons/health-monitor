@@ -7,6 +7,7 @@ import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
+import { daily_addon_usage } from './addon-usage';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -131,6 +132,8 @@ export async function job_execution_failed(client: Client, request: Request) {
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationsService = new RelationsService(client);
 
+        const result = await daily_addon_usage(client, request); //todo: Delete
+        
         const jobExecution = await JobExecutionFailedTest(monitorSettingsService, relationsService);
         return jobExecution;
     }

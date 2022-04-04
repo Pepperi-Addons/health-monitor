@@ -4,6 +4,11 @@ import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { Utils } from './utils.service'
 
+const LOGS_ADDON_UUID = "7eb366b8-ce3b-4417-aec6-ea128c660b8a"
+const HOUR_IN_MS = 3600000;
+const YESTERDAY = 86400000;
+const TWO_DAYS_AGO = 172800000;
+
 const errors = {
     "DAILY-ADDON-USAGE-LIMIT-REACHED": { "Message": 'Distributor passed the daily addon usage limit', "Color": "FF0000" },
     "MONTHLY-ADDON-USAGE-LIMIT-REACHED": { "Message": 'Distributor passed the monthly addon usage limit', "Color": "FF0000" },
@@ -13,6 +18,9 @@ const errors = {
 export async function daily_addon_usage(client: Client, request: Request) {
     console.log('HealthMonitorAddon start daily addon usage');
     const monitorSettingsService = new MonitorSettingsService(client);
+
+    const result = await getRunningTimeInLastDay(monitorSettingsService); //todo: Delete.
+
     const distributor = await monitorSettingsService.papiClient.get('/distributor');
 
     try {
@@ -38,6 +46,41 @@ export async function daily_addon_usage(client: Client, request: Request) {
 };
 
 //#region private methods
+
+async function getRunningTimeInLastDay(service) {
+    //todo: Wait for 'stats' in log-fetcher before resuming work.
+    const now = Date.now();
+    const startTime = new Date(new Date(now - TWO_DAYS_AGO).setUTCHours(0, 0, 0, 0)).toISOString();
+    const endTime = new Date(new Date(now - YESTERDAY).setUTCHours(0, 0, 0, 0)).toISOString();
+    const headers = {
+        "X-Pepperi-OwnerID": "9f3b727c-e88c-4311-8ec4-3857bc8621f3",
+        "X-Pepperi-SecretKey": "1091723d-7150-4002-a6b8-4988dbd6c026"
+    }
+    const requestBody1 = {
+        Groups: ["Addon"],
+        PageSize: 10000,
+        Fields: ["Duration"],
+        Filter: "Duration > 0",
+        DateTimeStamp: {
+            Start: startTime,
+            End: endTime
+        }
+    };
+
+    const requestBody2 = {
+        Groups: ["AsyncAddon"],
+        PageSize: 10000,
+        Fields: ["Duration"],
+        Filter: "Duration > 0",
+        DateTimeStamp: {
+            Start: startTime,
+            End: endTime
+        }
+    };
+
+    const cloudWatchResponse1 = await service.papiClient.post(`/logs`, requestBody1, headers);
+    const cloudWatchResponse2 = await service.papiClient.post(`/logs`, requestBody2, headers);
+}
 
 async function getDailyAddonUsage(service, distributor, monitorSettings) {
     const now = Date.now();
