@@ -33,7 +33,6 @@ export class VarRelationService {
     papiClient: PapiClient;
     readonly monitorLevelSettingId: string;
     readonly addonDailyUsageId: string;
-    addonDailyUsageValue: number = 1000;
 
     readonly relation: Relation;
 
@@ -75,7 +74,7 @@ export class VarRelationService {
     };
 
     async var_get_updated_settings(client: Client, request: Request) {
-        
+        //todo: Ask Saar if VAR relation will send all fields in case of an update
         if (!instanceOfSettingsData(request.body)) {
             const errorJson = {
                 ActionUUID: client.ActionUUID,
@@ -90,14 +89,16 @@ export class VarRelationService {
         
         const monitorLevelFieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
         const addonDailyUsageFieldData: FieldData = (settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData);
+        
         const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
-        this.addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value); //todo: Save this value in DB for future runs!
+        const addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value);
 
         // Update cron expression
         await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
 
         const data = {};
-        data['MonitorLevel'] = monitorLevelValue;
+        data['MonitorLevel'] = monitorLevelValue
+        data['MemoryUsageLimit'] = addonDailyUsageValue
         return await monitorSettingsService.setMonitorSettings(data);
     };
     
@@ -111,6 +112,10 @@ export class VarRelationService {
                     Id: this.monitorLevelSettingId,
                     Value: settings.MonitorLevel
                 },
+                {
+                    Id: this.addonDailyUsageId,
+                    Value: settings.MemoryUsageLimit
+                }
             ]
         }
     };

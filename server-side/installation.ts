@@ -14,6 +14,7 @@ import jwtDecode from "jwt-decode";
 import MonitorSettingsService from './monitor-settings.service';
 import VarRelationService from "./relations.var.service";
 
+const DEFAULT_MEMORY_USAGE = 5000000
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -95,12 +96,12 @@ exports.install = async (client: Client, request: Request) => {
 
         const data = {};
         const distributor = await GetDistributor(monitorSettingsService.papiClient);
-        const memoryUsageLimit = await monitorSettingsService.papiClient.get('/meta_data/flags/MemoryUsageLimit');
+        const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
         data["MonitorLevel"] = defaultMonitorValue;
-        data["MemoryUsageLimit"] = (memoryUsageLimit == false) ? 5000000 : memoryUsageLimit;
+        data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
         data["JobExecutionFailed"] = { Type: "Job execution failed", Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -114,7 +115,7 @@ exports.install = async (client: Client, request: Request) => {
             Key: distributor.InternalID.toString(),
             Data: data
         };
-        const settingsResponse = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+        await monitorSettingsService.setMonitorSettings(settingsBodyADAL)
         
         await upsertVarSettingsRelation(relationVarSettingsService);
 
@@ -234,11 +235,11 @@ exports.upgrade = async (client: Client, request: Request) => {
     let success = true;
     let resultObject = {};
 
-    const service = new MonitorSettingsService(client);
+    const monitorSettingsService = new MonitorSettingsService(client);
     const relationVarSettingsService = new VarRelationService(client);
     
     try {
-        let addon = await service.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
+        let addon = await monitorSettingsService.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => { return Number(item) }) || [];
 
         // upgrade to 2.0 or 1.0 versions
@@ -255,17 +256,19 @@ exports.upgrade = async (client: Client, request: Request) => {
                 "X-Pepperi-OwnerID": client.AddonUUID,
                 "X-Pepperi-SecretKey": client.AddonSecretKey
             };
-            const responseSettingsTable = await service.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
-            const distributor = await GetDistributor(service.papiClient);
-            const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
-            const memoryUsageLimit = await service.papiClient.get('/meta_data/flags/MemoryUsageLimit');
+            const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
+
+            const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
+            const distributor = await GetDistributor(monitorSettingsService.papiClient);
+            const monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
+            const memoryUsageLimit = await monitorSettingsService.papiClient.get('/meta_data/flags/MemoryUsageLimit');
             data["MonitorLevel"] = (monitorLevel == false) ? 4 : monitorLevel;
-            data["MemoryUsageLimit"] = (memoryUsageLimit == false) ? 5000000 : memoryUsageLimit;
+            data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
                 Data: data
             };
-            const settingsResponse = await service.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+            const settingsResponse = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
 
             console.log('HealthMonitor upgrade from additional data to ADAL succeeded.');
         }

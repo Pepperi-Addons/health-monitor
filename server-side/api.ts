@@ -855,7 +855,7 @@ async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage 
 
 export async function ReportErrorTeamsDriver(client: Client, request: Request) {
     const service = new MonitorSettingsService(client);
-    const environmant = 'sandbox';//jwtDecode(service.client.OAuthAccessToken)["pepperi.datacenter"];
+    const environmant = 'sandbox';//jwtDecode(service.clientData.OAuthAccessToken)["pepperi.datacenter"];
     //const environmant = 'production';
     const distributor = await GetDistributor(service);
     //const errorCode = "SYNC-CALL-FAILED";
