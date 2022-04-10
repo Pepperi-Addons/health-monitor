@@ -131,7 +131,7 @@ export async function job_execution_failed(client: Client, request: Request) {
     try {
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationsService = new RelationsService(client);
-        
+
         const jobExecution = await JobExecutionFailedTest(monitorSettingsService, relationsService);
         return jobExecution;
     }
@@ -462,7 +462,7 @@ export async function var_settings_callback(client: Client, request: Request) {
         else {
             throw new Error(`Method ${request.method} is not supported`)
         }
-    } 
+    }
     catch (error) {
         const errorMessage = Utils.GetErrorDetailsSafe(error);
         console.error(errorMessage);
@@ -729,7 +729,7 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
             InternalErrors: []
         }
         let reportsDetails: InnerErrorInterface[] = new Array();
-                           
+
         // In the reports array, all audit logs are one report, and each relation error is a report.
         for (var auditLog in auditLogsResult) {
             // Reformating the time stamp
@@ -841,12 +841,12 @@ async function ReportErrorCloudWatch(distributor, errorCode, type, innerMessage 
     let error = "";
     const generalMessage = (generalErrorMessage == "" && errorCode in errors) ? errors[errorCode]["Message"] : generalErrorMessage;
     error = 'DistributorID: ' + distributor.InternalID
-    + '\n\rName: ' + distributor.Name 
-    + '\n\rType: ' + type 
-    + '\n\rCode: ' + errorCode 
-    + '\n\rGeneralErrorMessage: ' + generalMessage
-    + '\n\InternalErrors: ' + innerMessage;
-    
+        + '\n\rName: ' + distributor.Name
+        + '\n\rType: ' + type
+        + '\n\rCode: ' + errorCode
+        + '\n\rGeneralErrorMessage: ' + generalMessage
+        + '\n\InternalErrors: ' + innerMessage;
+
     errorCode == 'SUCCESS' ? console.log(error) : console.error(error);
     return error;
 }

@@ -88,7 +88,7 @@ async function getCloudWatchLogs(service, now, distributor) {
             End: endTime
         }
     };
-    
+
     const addonsUsage = {};
     let results: any[] = [];
     await peach([statsForSyncAddons, statsForAsyncAddons], async (value: object, _: number) => {
@@ -112,7 +112,7 @@ async function getCloudWatchLogs(service, now, distributor) {
         });
     });
 
-    return addonsUsage ;
+    return addonsUsage;
 }
 
 async function upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now) {
@@ -275,7 +275,7 @@ async function updateMonitorSettings(service) {
     monitorSettings.Name = distributorData.Name;
     monitorSettings.MachineAndPort = machineData.Machine + ":" + machineData.Port;
     monitorSettings.MonitorLevel = (monitorLevel == false) ? 4 : monitorLevel;
-    
+
     const response = await service.setMonitorSettings(monitorSettings);
     return response;
 }

@@ -8,7 +8,7 @@ interface FieldData {
     Value: string
 }
 export interface SettingsData {
-    Fields: [ FieldData ]
+    Fields: [FieldData]
 }
 
 function instanceOfSettingsData(object: any): object is SettingsData {
@@ -53,7 +53,7 @@ export class VarRelationService {
             Type: "AddonAPI",
             Description: "Health Monitor relation to Var Settings, Var users can edit monitor settings via the Var addon",
             AddonRelativeURL: "/api/var_settings_callback",
-    
+
             AdditionalParams: {
                 Title: "Health Monitor",
                 Fields: [{
@@ -85,10 +85,10 @@ export class VarRelationService {
         }
         const settings = request.body as SettingsData;
         const monitorSettingsService = new MonitorSettingsService(client);
-        
+
         const monitorLevelFieldData = settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData;
         const addonDailyUsageFieldData = settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData;
-        
+
         const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
         const addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value);
 
@@ -96,7 +96,7 @@ export class VarRelationService {
 
         // Update cron expression
         await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
-        
+
         let adalData = await monitorSettingsService.getMonitorSettings()
         adalData.MonitorLevel = monitorLevelValue
         adalData.MemoryUsageLimit = addonDailyUsageValue
@@ -105,11 +105,11 @@ export class VarRelationService {
         console.log(`Updated values from VAR: ${JSON.stringify(updateResult)}`)
         return updateResult;
     };
-    
+
     async var_send_current_settings(client: Client, request: Request) {
         const monitorSettingsService = new MonitorSettingsService(client);
         const settings = await monitorSettingsService.getMonitorSettings();
-    
+
         return {
             Fields: [
                 {
@@ -127,7 +127,7 @@ export class VarRelationService {
     async update_cron_expression(monitorSettingsService: MonitorSettingsService, monitorLevelValue: number) {
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-        const cronExpression = GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, monitorLevelValue)          
+        const cronExpression = GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, monitorLevelValue)
 
         const monitorSettings = await monitorSettingsService.getMonitorSettings()
         const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({

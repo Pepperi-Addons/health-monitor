@@ -116,7 +116,7 @@ exports.install = async (client: Client, request: Request) => {
             Data: data
         };
         await monitorSettingsService.setMonitorSettings(settingsBodyADAL)
-        
+
         await upsertVarSettingsRelation(relationVarSettingsService);
 
         console.log('HealthMonitorAddon installed succeeded.');
@@ -237,7 +237,7 @@ exports.upgrade = async (client: Client, request: Request) => {
 
     const monitorSettingsService = new MonitorSettingsService(client);
     const relationVarSettingsService = new VarRelationService(client);
-    
+
     try {
         let addon = await monitorSettingsService.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => { return Number(item) }) || [];
@@ -501,7 +501,7 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         monitorLevel = (monitorLevel == false) ? 4 : monitorLevel;
         const interval = monitorLevel > 1 ? 15 : 5;
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
-        
+
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
         retVal["codeJobUUID"] = codeJob.UUID;
@@ -588,7 +588,7 @@ function getCronExpression() {
 
 async function upsertVarSettingsRelation(varRelationService: VarRelationService, install: boolean = true) {
     let relation = varRelationService.relation;
-    
+
     if (!(install)) {
         relation.Hidden = true;
     }
