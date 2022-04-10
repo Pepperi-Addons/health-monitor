@@ -135,7 +135,7 @@ async function getDailyReport(service, distributor, dailyAddonUsage, memoryUsage
         for (var item in addonsUsage) {
             if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage > memoryUsageLimit) {
                 const innerMessage = "AddonUUID " + item + " reached the memory usage limit - " + addonsUsage[item].MemoryUsage;
-                reportError(service, distributor, "ADDON-USAGE", "DAILY-ADDON-USAGE-LIMIT-REACHED", innerMessage);
+                await reportError(service, distributor, "ADDON-USAGE", "DAILY-ADDON-USAGE-LIMIT-REACHED", innerMessage);
                 dailyReport["PassedLimit"].push(item);
             }
             else if (addonsUsage[item].MemoryUsage != null && addonsUsage[item].MemoryUsage < memoryUsageLimit) {
@@ -190,13 +190,13 @@ function getExpirationDateTime() {
 async function reportError(service, distributor, errorCode, type, innerMessage) {
     const environmant = jwtDecode(service.clientData.OAuthAccessToken)["pepperi.datacenter"];
     // report error to cloud watch
-    let error = 'DistributorID: ' + distributor.InternalID + '\n\rName: ' + distributor.Name + '\n\rType: ' + type + '\n\rCode: ' + errorCode + '\n\rMessage: ' + errors[errorCode]["Message"] + '\n\rInnerMessage: ' + innerMessage;
+    let error = 'DistributorID: ' + distributor.InternalID + '\n\rName: ' + distributor.Name + '\n\rType: ' + type + '\n\rCode: ' + errorCode + '\n\rMessage: ' + errors[type]["Message"] + '\n\rInnerMessage: ' + innerMessage;
     console.error(error);
 
     // report error to teams on System Status chanel
     let url;
     const body = {
-        themeColor: errors[errorCode]["Color"],
+        themeColor: errors[type]["Color"],
         Summary: distributor.InternalID + " - " + distributor.Name,
         sections: [{
             facts: [{
@@ -213,7 +213,7 @@ async function reportError(service, distributor, errorCode, type, innerMessage) 
                 value: type
             }, {
                 name: "Message",
-                value: errors[errorCode]["Message"]
+                value: errors[type]["Message"]
             }, {
                 name: "Inner Message",
                 value: innerMessage

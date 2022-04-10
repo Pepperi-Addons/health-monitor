@@ -131,8 +131,6 @@ export async function job_execution_failed(client: Client, request: Request) {
     try {
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationsService = new RelationsService(client);
-
-        const result = await daily_addon_usage(client, request); //todo: Delete
         
         const jobExecution = await JobExecutionFailedTest(monitorSettingsService, relationsService);
         return jobExecution;

@@ -74,7 +74,6 @@ export class VarRelationService {
     };
 
     async var_get_updated_settings(client: Client, request: Request) {
-        //todo: Ask Saar if VAR relation will send all fields in case of an update
         if (!instanceOfSettingsData(request.body)) {
             const errorJson = {
                 ActionUUID: client.ActionUUID,
@@ -87,19 +86,24 @@ export class VarRelationService {
         const settings = request.body as SettingsData;
         const monitorSettingsService = new MonitorSettingsService(client);
         
-        const monitorLevelFieldData: FieldData = (settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData);
-        const addonDailyUsageFieldData: FieldData = (settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData);
+        const monitorLevelFieldData = settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData;
+        const addonDailyUsageFieldData = settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData;
         
         const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
         const addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value);
 
+        console.log(`Got new values from VAR settings: ${JSON.stringify(settings)}`)
+
         // Update cron expression
         await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
+        
+        let adalData = await monitorSettingsService.getMonitorSettings()
+        adalData.MonitorLevel = monitorLevelValue
+        adalData.MemoryUsageLimit = addonDailyUsageValue
 
-        const data = {};
-        data['MonitorLevel'] = monitorLevelValue
-        data['MemoryUsageLimit'] = addonDailyUsageValue
-        return await monitorSettingsService.setMonitorSettings(data);
+        const updateResult = await monitorSettingsService.setMonitorSettings(adalData);
+        console.log(`Updated values from VAR: ${JSON.stringify(updateResult)}`)
+        return updateResult;
     };
     
     async var_send_current_settings(client: Client, request: Request) {
@@ -125,8 +129,9 @@ export class VarRelationService {
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
         const cronExpression = GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, monitorLevelValue)          
 
+        const monitorSettings = await monitorSettingsService.getMonitorSettings()
         const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({
-            UUID: (await monitorSettingsService.getMonitorSettings()).SyncFailedCodeJobUUID,
+            UUID: monitorSettings.SyncFailedCodeJobUUID,
             CronExpression: cronExpression,
         } as any); // Using "as any" to avoid filling all fields.
 
