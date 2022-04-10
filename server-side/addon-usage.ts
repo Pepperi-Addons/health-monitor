@@ -43,6 +43,22 @@ export async function daily_addon_usage(client: Client, request: Request) {
 
 //#region private methods
 
+async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSettings) {
+    const now = Date.now();
+
+    // get the daily memory usage per addon from CloudWatch
+    const cloudWatchLogs = await getCloudWatchLogs(monitorSettingsService, now, distributor);
+    const dailyAddonUsage = await upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now);
+
+    // check conditions for problematic use of lambdas, create report and alert problems
+    const memoryUsageLimit = monitorSettings.MemoryUsageLimit;
+    const dailyReport = await getDailyReport(monitorSettingsService, distributor, dailyAddonUsage, memoryUsageLimit);
+    const monthlyReport = await getMonthlyReport(monitorSettingsService, distributor, memoryUsageLimit);
+
+    console.log('HealthMonitorAddon ended daily addon usage');
+    return { DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"] };
+}
+
 async function getCloudWatchLogs(service, now, distributor) {
 
     const startTime = new Date(new Date(now - TWO_DAYS_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString();
@@ -97,22 +113,6 @@ async function getCloudWatchLogs(service, now, distributor) {
     });
 
     return addonsUsage ;
-}
-
-async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSettings) {
-    const now = Date.now();
-
-    // get the daily memory usage per addon from CloudWatch
-    const cloudWatchLogs = await getCloudWatchLogs(monitorSettingsService, now, distributor);
-    const dailyAddonUsage = await upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now);
-
-    // check conditions for problematic use of lambdas, create report and alert problems
-    const memoryUsageLimit = monitorSettings.MemoryUsageLimit;
-    const dailyReport = await getDailyReport(monitorSettingsService, distributor, dailyAddonUsage, memoryUsageLimit);
-    const monthlyReport = await getMonthlyReport(monitorSettingsService, distributor, memoryUsageLimit);
-
-    console.log('HealthMonitorAddon ended daily addon usage');
-    return { DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"] };
 }
 
 async function upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now) {
