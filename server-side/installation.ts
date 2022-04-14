@@ -13,6 +13,7 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 import MonitorSettingsService from './monitor-settings.service';
 import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
+import Semver from "semver";
 
 const DEFAULT_MEMORY_USAGE = 5000000
 export const DEFAULT_MONITOR_LEVEL = 15
@@ -263,13 +264,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
 
-            // On update invalidate all old values of monitor value, so all dist will default to a valid value.
-            if (currentMonitorLevel !== undefined && VALID_MONITOR_LEVEL_VALUES.includes(currentMonitorLevel)) {
-                data["MonitorLevel"] = currentMonitorLevel
-            } else {
-                data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
-            }
-            
+            data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : currentMonitorLevel;
             data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
@@ -278,6 +273,29 @@ exports.upgrade = async (client: Client, request: Request) => {
             const settingsResponse = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
 
             console.log('HealthMonitor upgrade from additional data to ADAL succeeded.');
+        }
+
+        // Upgrade to a version with new monitor-level default
+        if (Semver.lte(request.body.FromVersion, '2.0.19')) {
+            const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
+            const currentMonitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
+            const distributor = await GetDistributor(monitorSettingsService.papiClient);
+            let data = {}
+
+            // On update invalidate all old values of monitor value, so all dist will default to a valid value.
+            if (currentMonitorLevel !== undefined && VALID_MONITOR_LEVEL_VALUES.includes(currentMonitorLevel)) {
+                data["MonitorLevel"] = currentMonitorLevel
+            } else {
+                data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
+            }
+            
+            data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit
+            const settingsBodyADAL = {
+                Key: distributor.InternalID.toString(),
+                Data: data
+            };
+            await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL)
+            console.log('HealthMonitor upgraded to new Monitor-Level.');
         }
 
         await upsertVarSettingsRelation(relationVarSettingsService);
