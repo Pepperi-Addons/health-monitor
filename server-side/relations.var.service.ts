@@ -3,6 +3,8 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
 import { GetMonitorCronExpression } from './installation';
 
+export const VALID_MONITOR_LEVEL_VALUES = [5, 15]
+
 interface FieldData {
     Id: string,
     Value: string
@@ -87,18 +89,22 @@ export class VarRelationService {
         const monitorSettingsService = new MonitorSettingsService(client);
 
         const monitorLevelFieldData = settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData;
-        const addonDailyUsageFieldData = settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData;
-
         const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
+        
+        const addonDailyUsageFieldData = settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData;
         const addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value);
 
         console.log(`Got new values from VAR settings: ${JSON.stringify(settings)}`)
 
-        // Update cron expression
-        await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
-
+        // Update settings in ADAL
         let adalData = await monitorSettingsService.getMonitorSettings()
-        adalData.MonitorLevel = monitorLevelValue
+        
+        if (VALID_MONITOR_LEVEL_VALUES.includes(monitorLevelValue)) {
+            adalData.MonitorLevel = monitorLevelValue
+
+            // Update cron expression
+            await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
+        }
         adalData.MemoryUsageLimit = addonDailyUsageValue
 
         const updateResult = await monitorSettingsService.setMonitorSettings(adalData);

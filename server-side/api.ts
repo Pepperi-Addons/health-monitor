@@ -3,11 +3,11 @@ import RelationsService from './relations.service';
 import VarRelationService from './relations.var.service'
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
-import { PapiClient, CodeJob } from "@pepperi-addons/papi-sdk";
+import { PapiClient } from "@pepperi-addons/papi-sdk";
 import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
-import { daily_addon_usage } from './addon-usage';
+import { DEFAULT_MONITOR_LEVEL } from './installation';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -797,21 +797,12 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
 //#region private functions
 
 async function validateBeforeTest(monitorSettingsService, monitorSettings) {
-    // check if monitor level is 4
-    if (monitorSettings.MonitorLevel == 4) {
+    // check if monitor level is default
+    if (monitorSettings.MonitorLevel === DEFAULT_MONITOR_LEVEL) {
         return false;
     }
 
-    // check if Nucleus is loaded
-    const isDistributorLoaded = await monitorSettingsService.papiClient.get("/distributor/InNucleus");
-    if (!isDistributorLoaded) {
-        if (monitorSettings.MonitorLevel > 2) {
-            console.log('This test dont run on monitor level 3 while distributor not loaded.');
-            return false;
-        }
-    }
-
-    //check if in the last 2 minutes were successful sync dont perform test
+    // Check if we had a successful sync in the last 2 minutes, if so don't perform test
     const twoMinutesAgo = new Date(Date.now() - 150 * 1000).toISOString();
     const currentSync = await monitorSettingsService.papiClient.get("/audit_logs?fields=ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName='sync' and ModificationDateTime>'" + twoMinutesAgo + "' and Status.ID=1");
     if (currentSync.length > 0) {

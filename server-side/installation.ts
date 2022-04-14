@@ -7,14 +7,15 @@ If the result of your code is 'false' then return:
 {success:false, errorMessage:{the reason why it is false}}
 The erroeMessage is importent! it will be written in the audit log and help the user to understand what happen
 */
-import { AddonDataScheme, Relation } from "@pepperi-addons/papi-sdk";
+import { AddonDataScheme } from "@pepperi-addons/papi-sdk";
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 import MonitorSettingsService from './monitor-settings.service';
-import VarRelationService from "./relations.var.service";
+import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
+export const DEFAULT_MONITOR_LEVEL = 15
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -27,7 +28,6 @@ exports.install = async (client: Client, request: Request) => {
         let successDailyAddonUsage = true;
         let successUsageMonitor = true;
 
-        const defaultMonitorValue = 4;
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationVarSettingsService = new VarRelationService(client);
 
@@ -97,10 +97,11 @@ exports.install = async (client: Client, request: Request) => {
         const data = {};
         const distributor = await GetDistributor(monitorSettingsService.papiClient);
         const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
+        const currentMonitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = defaultMonitorValue;
+        data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MEMORY_USAGE : currentMonitorLevel;
         data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -257,11 +258,18 @@ exports.upgrade = async (client: Client, request: Request) => {
                 "X-Pepperi-SecretKey": client.AddonSecretKey
             };
             const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
+            const currentMonitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
 
             const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
-            const monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
-            data["MonitorLevel"] = (monitorLevel == false) ? 4 : monitorLevel;
+
+            // On update invalidate all old values of monitor value, so all dist will default to a valid value.
+            if (currentMonitorLevel !== undefined && VALID_MONITOR_LEVEL_VALUES.includes(currentMonitorLevel)) {
+                data["MonitorLevel"] = currentMonitorLevel
+            } else {
+                data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
+            }
+            
             data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
@@ -496,15 +504,15 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
 
-        let monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
-        monitorLevel = (monitorLevel == false) ? 4 : monitorLevel;
-        const interval = monitorLevel > 1 ? 15 : 5;
+        let monitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
+        const interval = (monitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : monitorLevel;
+
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
         retVal["codeJobUUID"] = codeJob.UUID;
-        retVal["interval"] = monitorLevel > 1 ? 15 : 5;
+        retVal["interval"] = interval;
     }
     catch (error) {
         const errorMessage = Utils.GetErrorDetailsSafe(error);

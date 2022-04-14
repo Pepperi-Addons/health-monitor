@@ -258,12 +258,13 @@ async function checkMaintenanceWindow(service, monitorSettings) {
 async function updateMonitorSettings(service) {
     let distributorData = await service.papiClient.get('/distributor');
     const machineData = await service.papiClient.get('/distributor/machine');
-    const monitorLevel = await service.papiClient.get('/meta_data/flags/MonitorLevel');
+    const monitorLevel = (await service.getMonitorSettings()).monitorLevel
+
 
     let monitorSettings = await service.getMonitorSettings();
     monitorSettings.Name = distributorData.Name;
     monitorSettings.MachineAndPort = machineData.Machine + ":" + machineData.Port;
-    monitorSettings.MonitorLevel = (monitorLevel == false) ? 4 : monitorLevel;
+    monitorSettings.MonitorLevel = monitorLevel;
 
     const response = await service.setMonitorSettings(monitorSettings);
     return response;
