@@ -3,7 +3,7 @@ import { Client, Request } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
 import { GetMonitorCronExpression } from './installation';
 
-export const VALID_MONITOR_LEVEL_VALUES = [5, 15]
+export const VALID_MONITOR_LEVEL_VALUES = [5, 15] // Minutes
 
 interface FieldData {
     Id: string,
