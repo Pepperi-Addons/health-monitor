@@ -16,7 +16,7 @@ import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.
 import Semver from "semver";
 
 const DEFAULT_MEMORY_USAGE = 5000000
-export const DEFAULT_MONITOR_LEVEL = 15
+export const DEFAULT_MONITOR_LEVEL = 15 // Minutes
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -102,7 +102,7 @@ exports.install = async (client: Client, request: Request) => {
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MEMORY_USAGE : currentMonitorLevel;
+        data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : currentMonitorLevel;
         data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -117,8 +117,7 @@ exports.install = async (client: Client, request: Request) => {
             Key: distributor.InternalID.toString(),
             Data: data
         };
-        await monitorSettingsService.setMonitorSettings(settingsBodyADAL)
-
+        await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
         await upsertVarSettingsRelation(relationVarSettingsService);
 
         console.log('HealthMonitorAddon installed succeeded.');
