@@ -261,7 +261,6 @@ exports.upgrade = async (client: Client, request: Request) => {
             const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
             const monitorLevel = await monitorSettingsService.papiClient.get('/meta_data/flags/MonitorLevel');
-            const memoryUsageLimit = await monitorSettingsService.papiClient.get('/meta_data/flags/MemoryUsageLimit');
             data["MonitorLevel"] = (monitorLevel == false) ? 4 : monitorLevel;
             data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
             const settingsBodyADAL = {

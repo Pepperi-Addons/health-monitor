@@ -59,35 +59,10 @@ async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSe
     return { DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"] };
 }
 
-async function getCloudWatchLogs(service, now, distributor) {
+async function getCloudWatchLogs(service, now: number, distributor) {
 
-    const startTime = new Date(new Date(now - TWO_DAYS_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString();
-    const endTime = new Date(new Date(now - ONE_DAY_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString();
-    const filter = 'Duration > 0' + ' and ' + `DistributorUUID='${distributor.UUID}'`;
-    const stats = "count(*) as Count, sum(Duration) as TotalDuration, sum(Duration)*LambdaMemorySize as MemoryUsage by AddonUUID,LambdaMemorySize";
-    const limit = 10000;
-
-    const statsForSyncAddons = {
-        Groups: ["Addon"],
-        PageSize: limit,
-        Stats: stats,
-        Filter: filter,
-        DateTimeStamp: {
-            Start: startTime,
-            End: endTime
-        }
-    };
-
-    const statsForAsyncAddons = {
-        Groups: ["AsyncAddon"],
-        PageSize: limit,
-        Stats: stats,
-        Filter: filter,
-        DateTimeStamp: {
-            Start: startTime,
-            End: endTime
-        }
-    };
+    const statsForSyncAddons = getQueryParameters(distributor, now, ["Addon"])
+    const statsForAsyncAddons = getQueryParameters(distributor, now, ["AsyncAddon"])
 
     const addonsUsage = {};
     let results: any[] = [];
@@ -113,6 +88,20 @@ async function getCloudWatchLogs(service, now, distributor) {
     });
 
     return addonsUsage;
+}
+
+function getQueryParameters(distributor, timeStamp: number, logGroups: string[]) {
+    return {
+        Groups: logGroups,
+        PageSize: 10000,
+        Stats: "count(*) as Count, sum(Duration) as TotalDuration, sum(Duration)*LambdaMemorySize as MemoryUsage by AddonUUID,LambdaMemorySize",
+        Filter: 'Duration > 0' + ' and ' + `DistributorUUID='${distributor.UUID}'`,
+        DateTimeStamp: { 
+            // Looking at data from one calendar day of yesterday
+            Start: new Date(new Date(timeStamp - TWO_DAYS_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString(),
+            End: new Date(new Date(timeStamp - ONE_DAY_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString()
+        }
+    };
 }
 
 async function upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now) {
