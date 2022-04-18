@@ -7,13 +7,14 @@ If the result of your code is 'false' then return:
 {success:false, errorMessage:{the reason why it is false}}
 The erroeMessage is importent! it will be written in the audit log and help the user to understand what happen
 */
-import { AddonDataScheme } from "@pepperi-addons/papi-sdk";
+import { AddonDataScheme, PapiClient, Relation } from "@pepperi-addons/papi-sdk";
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import jwtDecode from "jwt-decode";
 import MonitorSettingsService from './monitor-settings.service';
 import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 import Semver from "semver";
+import UsageRelationService from "./relations.usage.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
 export const DEFAULT_MONITOR_LEVEL = 15 // Minutes
@@ -31,6 +32,7 @@ exports.install = async (client: Client, request: Request) => {
 
         const monitorSettingsService = new MonitorSettingsService(client);
         const relationVarSettingsService = new VarRelationService(client);
+        const usageMonitorRelation = new UsageRelationService(client)
 
         const bodyADAL1: AddonDataScheme = {
             Name: 'HealthMonitorSettings',
@@ -97,13 +99,11 @@ exports.install = async (client: Client, request: Request) => {
 
         const data = {};
         const distributor = await GetDistributor(monitorSettingsService.papiClient);
-        const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
-        const currentMonitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : currentMonitorLevel;
-        data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
+        data["MonitorLevel"] =DEFAULT_MONITOR_LEVEL
+        data["MemoryUsageLimit"] = DEFAULT_MEMORY_USAGE
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
         data["JobExecutionFailed"] = { Type: "Job execution failed", Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -118,7 +118,9 @@ exports.install = async (client: Client, request: Request) => {
             Data: data
         };
         await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
-        await upsertVarSettingsRelation(relationVarSettingsService);
+        
+        const relations = [usageMonitorRelation.relation, relationVarSettingsService.relation]
+        await upsertRelations(usageMonitorRelation.papiClient, relations)
 
         console.log('HealthMonitorAddon installed succeeded.');
         return {
@@ -142,6 +144,7 @@ exports.uninstall = async (client: Client, request: Request) => {
         const monitorSettingsService = new MonitorSettingsService(client);
         const monitorSettings = await monitorSettingsService.getMonitorSettings();
         const relationVarSettingsService = new VarRelationService(client);
+        const usageMonitorRelation = new UsageRelationService(client)
 
         // unschedule SyncFailed test
         let syncFailedCodeJobUUID = monitorSettings.SyncFailedCodeJobUUID;
@@ -210,7 +213,9 @@ exports.uninstall = async (client: Client, request: Request) => {
         }
         const responseDailyAddonUsageTable = await monitorSettingsService.papiClient.post('/addons/data/schemes/DailyAddonUsage/purge', null, headersADAL);
         const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes/HealthMonitorSettings/purge', null, headersADAL);
-        await upsertVarSettingsRelation(relationVarSettingsService, false);
+        
+        const relations = [usageMonitorRelation.relation, relationVarSettingsService.relation]
+        await upsertRelations(usageMonitorRelation.papiClient, relations, false)
 
         console.log('HealthMonitorAddon uninstalled succeeded.');
 
@@ -238,6 +243,7 @@ exports.upgrade = async (client: Client, request: Request) => {
 
     const monitorSettingsService = new MonitorSettingsService(client);
     const relationVarSettingsService = new VarRelationService(client);
+    const usageMonitorRelation = new UsageRelationService(client)
 
     try {
         let addon = await monitorSettingsService.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
@@ -297,7 +303,8 @@ exports.upgrade = async (client: Client, request: Request) => {
             console.log('HealthMonitor upgraded to new Monitor-Level.');
         }
 
-        await upsertVarSettingsRelation(relationVarSettingsService);
+        const relations = [usageMonitorRelation.relation, relationVarSettingsService.relation]
+        await upsertRelations(usageMonitorRelation.papiClient, relations)
 
         console.log('HealthMonitorAddon upgrade succeeded.');
         return {
@@ -520,10 +527,8 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
 
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-
-        let monitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
-        const interval = (monitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : monitorLevel;
-
+        
+        const interval = DEFAULT_MONITOR_LEVEL
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
@@ -610,14 +615,15 @@ function getCronExpression() {
     return expressions[index];
 }
 
-async function upsertVarSettingsRelation(varRelationService: VarRelationService, install: boolean = true) {
-    let relation = varRelationService.relation;
+async function upsertRelations(papiClient: PapiClient,relations: Relation[], install: boolean = true) {
+    
+    relations.forEach(async relation => {
+        if (!(install)) {
+            relation.Hidden = true
+        }
 
-    if (!(install)) {
-        relation.Hidden = true;
-    }
-
-    return await varRelationService.papiClient.addons.data.relations.upsert(relation);
+        await papiClient.addons.data.relations.upsert(relation);
+    })
 }
 
 //#endregion

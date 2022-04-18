@@ -6,7 +6,6 @@ import { Utils } from './utils.service'
 import peach from 'parallel-each'
 
 const ONE_DAY_IN_MS = 86400000;
-const TWO_DAYS_IN_MS = 172800000;
 
 const errors = {
     "DAILY-ADDON-USAGE-LIMIT-REACHED": { "Message": 'Distributor passed the daily addon usage limit', "Color": "FF0000" },
@@ -41,6 +40,39 @@ export async function daily_addon_usage(client: Client, request: Request) {
     }
 };
 
+export async function getCloudWatchLogs(service, now: number, distributor) {
+
+    const statsForSyncAddons = getQueryParameters(distributor, now, ["Addon"])
+    const statsForAsyncAddons = getQueryParameters(distributor, now, ["AsyncAddon"])
+
+    const addonsUsage = {}
+    let results: any[] = []
+
+    // parallel foreach
+    await peach([statsForSyncAddons, statsForAsyncAddons], async (value: object) => {
+        results = results.concat(await service.papiClient.post(`/logs`, value), results)
+    }, 2)
+
+    results.forEach(result => {
+        addonsUsage[result.AddonUUID.toLowerCase()] = {
+            Count:
+                addonsUsage[result.AddonUUID.toLowerCase()] ?
+                    addonsUsage[result.AddonUUID.toLowerCase()].Count + Number(result.Count) :
+                    Number(result.Count),
+            Duration:
+                addonsUsage[result.AddonUUID.toLowerCase()] ?
+                    addonsUsage[result.AddonUUID.toLowerCase()].Duration + Number(result.TotalDuration) :
+                    Number(result.TotalDuration),
+            MemoryUsage:
+                addonsUsage[result.AddonUUID.toLowerCase()] ?
+                    addonsUsage[result.AddonUUID.toLowerCase()].MemoryUsage + Number(result.MemoryUsage) :
+                    Number(result.MemoryUsage),
+        };
+    });
+
+    return addonsUsage;
+}
+
 //#region private methods
 
 async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSettings) {
@@ -59,37 +91,6 @@ async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSe
     return { DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"] };
 }
 
-async function getCloudWatchLogs(service, now: number, distributor) {
-
-    const statsForSyncAddons = getQueryParameters(distributor, now, ["Addon"])
-    const statsForAsyncAddons = getQueryParameters(distributor, now, ["AsyncAddon"])
-
-    const addonsUsage = {};
-    let results: any[] = [];
-    await peach([statsForSyncAddons, statsForAsyncAddons], async (value: object, _: number) => {
-        results = results.concat(await service.papiClient.post(`/logs`, value))
-    }, 2).then(() => {
-        results.forEach(result => {
-            addonsUsage[result.AddonUUID.toLowerCase()] = {
-                Count:
-                    addonsUsage[result.AddonUUID.toLowerCase()] ?
-                        addonsUsage[result.AddonUUID.toLowerCase()].Count + Number(result.Count) :
-                        Number(result.Count),
-                Duration:
-                    addonsUsage[result.AddonUUID.toLowerCase()] ?
-                        addonsUsage[result.AddonUUID.toLowerCase()].Duration + Number(result.TotalDuration) :
-                        Number(result.TotalDuration),
-                MemoryUsage:
-                    addonsUsage[result.AddonUUID.toLowerCase()] ?
-                        addonsUsage[result.AddonUUID.toLowerCase()].MemoryUsage + Number(result.MemoryUsage) :
-                        Number(result.MemoryUsage),
-            };
-        });
-    });
-
-    return addonsUsage;
-}
-
 function getQueryParameters(distributor, timeStamp: number, logGroups: string[]) {
     return {
         Groups: logGroups,
@@ -98,8 +99,8 @@ function getQueryParameters(distributor, timeStamp: number, logGroups: string[])
         Filter: 'Duration > 0' + ' and ' + `DistributorUUID='${distributor.UUID}'`,
         DateTimeStamp: { 
             // Looking at data from one calendar day of yesterday
-            Start: new Date(new Date(timeStamp - TWO_DAYS_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString(),
-            End: new Date(new Date(timeStamp - ONE_DAY_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString()
+            Start: new Date(new Date(timeStamp - ONE_DAY_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString(),
+            End: new Date(new Date(timeStamp - ONE_DAY_IN_MS).setUTCHours(23, 59, 59, 999)).toISOString()
         }
     };
 }
