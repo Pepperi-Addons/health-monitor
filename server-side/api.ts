@@ -476,7 +476,7 @@ export async function usage_callback(client: Client, request: Request) {
 
     try {
         if (request.method === 'GET') {
-            return await usageRelationService.getUsageData(client, request)
+            return await usageRelationService.getUsageData(client)
         }
         else {
             throw new Error(`Method ${request.method} is not supported`)

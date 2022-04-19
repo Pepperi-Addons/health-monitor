@@ -1,6 +1,6 @@
 {
   "AddonUUID": "7e15d4cc-55a7-4128-a9fe-0e877ba90069",
-  "AddonVersion": "2.0.30",
+  "AddonVersion": "2.0.31",
   "DebugPort": 4400,
   "WebappBaseUrl": "https://app.sandbox.pepperi.com",
   "DefaultEditor": "main",
@@ -29,7 +29,8 @@
     "Dependencies": {
       "webapp": "16.55.42",
       "papi": "9.5.415",
-      "adal": "1.0.100"
+      "adal": "1.0.100",
+      "CloudWatch": "0.0.95"
     }
   }
 }

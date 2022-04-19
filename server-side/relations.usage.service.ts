@@ -1,8 +1,9 @@
-import { PapiClient, InstalledAddon, Relation } from '@pepperi-addons/papi-sdk'
-import { Client, Request } from '@pepperi-addons/debug-server'
+import { PapiClient, Relation } from '@pepperi-addons/papi-sdk'
+import { Client } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
-import { daily_addon_usage, getCloudWatchLogs } from './addon-usage';
+import { getCloudWatchLogs } from './addon-usage';
 import ClientData from './client-data';
+import jwtDecode from "jwt-decode";
 
 export class UsageRelationService {
 
@@ -30,25 +31,24 @@ export class UsageRelationService {
         }
     };
 
-    async getUsageData(client: Client, request: Request) {
-        const today = new Date();
+    async getUsageData(client: Client) {
         let size = 0
-        
-        // Get 3 latest entries
+        let todaysResult: any = undefined
+
+        // Get latest entry
         const monthlyAddonUsageResponse = await this.papiClient.addons.data.uuid(this.clientData.addonUUID).table('DailyAddonUsage').iter({ order_by: "CreationDateTime desc", page_size: 1 }).toArray();
 
-        // Search for data from today
-        let todaysResult = monthlyAddonUsageResponse.find((dailyUsage) => {
-            const timeString = dailyUsage.CreationDateTime!
-            const time = new Date(timeString)
-            return time.toDateString() == today.toDateString()
-        })
+        // Check that data is from today
+        if (monthlyAddonUsageResponse && monthlyAddonUsageResponse[0]
+            && new Date(monthlyAddonUsageResponse[0].CreationDateTime!).toDateString() == new Date().toDateString()) {
+            todaysResult = monthlyAddonUsageResponse[0]
+        }
         
-        // If data not found take it from AWS
+        // if there is no data about addon's usage in the last day, take it from cloud watch.
         if (todaysResult === undefined || (todaysResult as any).AddonsUsage === undefined) {
             const monitorSettingsService = new MonitorSettingsService(client);
-            const distributor = await monitorSettingsService.papiClient.get('/distributor');
-            todaysResult = { AddonsUsage: await getCloudWatchLogs(monitorSettingsService, today.getTime(), distributor) }
+            const distributorUUID = jwtDecode(monitorSettingsService.clientData.OAuthAccessToken)['pepperi.distributoruuid'];
+            todaysResult = { AddonsUsage: await getCloudWatchLogs(monitorSettingsService, distributorUUID) }
         }
 
         // Summerize all addons usage

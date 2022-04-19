@@ -40,10 +40,10 @@ export async function daily_addon_usage(client: Client, request: Request) {
     }
 };
 
-export async function getCloudWatchLogs(service, now: number, distributor) {
+export async function getCloudWatchLogs(service, distributorUUID: string) {
 
-    const statsForSyncAddons = getQueryParameters(distributor, now, ["Addon"])
-    const statsForAsyncAddons = getQueryParameters(distributor, now, ["AsyncAddon"])
+    const statsForSyncAddons = getQueryParameters(distributorUUID, ["Addon"])
+    const statsForAsyncAddons = getQueryParameters(distributorUUID, ["AsyncAddon"])
 
     const addonsUsage = {}
     let results: any[] = []
@@ -79,7 +79,7 @@ async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSe
     const now = Date.now();
 
     // get the daily memory usage per addon from CloudWatch
-    const cloudWatchLogs = await getCloudWatchLogs(monitorSettingsService, now, distributor);
+    const cloudWatchLogs = await getCloudWatchLogs(monitorSettingsService, distributor.UUID);
     const dailyAddonUsage = await upsertDailyAddonUsageToADAL(monitorSettingsService, cloudWatchLogs, now);
 
     // check conditions for problematic use of lambdas, create report and alert problems
@@ -91,12 +91,13 @@ async function getDailyAddonUsage(monitorSettingsService, distributor, monitorSe
     return { DailyPassedLimit: dailyReport["PassedLimit"], MonthlyPassedLimit: monthlyReport["PassedLimit"] };
 }
 
-function getQueryParameters(distributor, timeStamp: number, logGroups: string[]) {
+function getQueryParameters(distributorUUID, logGroups: string[]) {
+    const timeStamp = Date.now()
     return {
         Groups: logGroups,
         PageSize: 10000,
         Stats: "count(*) as Count, sum(Duration) as TotalDuration, sum(Duration)*LambdaMemorySize as MemoryUsage by AddonUUID,LambdaMemorySize",
-        Filter: 'Duration > 0' + ' and ' + `DistributorUUID='${distributor.UUID}'`,
+        Filter: 'Duration > 0' + ' and ' + `DistributorUUID='${distributorUUID}'`,
         DateTimeStamp: { 
             // Looking at data from one calendar day of yesterday
             Start: new Date(new Date(timeStamp - ONE_DAY_IN_MS).setUTCHours(0, 0, 0, 0)).toISOString(),
