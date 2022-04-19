@@ -844,6 +844,9 @@ async function ReportError(monitorSettingsService: MonitorSettingsService, distr
     // report error to webhook
     ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
+    // report error to Nagios
+    await ReportErrorToNagios(distributor.InternalID, errorCode, generalErrorMessage)
+
     return errorMessage;
 }
 
@@ -1032,6 +1035,73 @@ async function ReportErrorWebhook(monitorSettingsService, errorCode, type, inner
             method: "POST",
             body: JSON.stringify(body)
         });
+    }
+}
+
+export async function ReportErrorToNagios(distributorID: string, service: string, message: string) {
+    const url = "https://nagios.pepperi.com/nrdp/"
+    const token = "" //todo: need to get token from KMS
+    const cmd = "submitcheck"
+
+    enum CheckResultsState {
+        OK          = 0,    // UP
+        WARNING     = 1,    // UP or DOWN/UNREACHABLE*
+        CRITICAL    = 2,    // DOWN/UNREACHABLE
+        UNKNOWN     = 4     // DOWN/UNREACHABLE
+    }
+
+    // Determine state using errorCode as we do know the error level
+    let state: string
+
+    if (errors[service] === undefined) {
+        state = CheckResultsState.WARNING.toString()
+    } else {
+        switch (errors[service]["Color"]) {
+            case '00FF00': // Green
+                state = CheckResultsState.OK.toString()
+                break
+            case 'FFFF00': // Yellow
+                state = CheckResultsState.WARNING.toString()
+                break
+            case '990000': // Other red
+            case 'FF0000': // Red
+                state = CheckResultsState.CRITICAL.toString()
+                break
+            default:
+                state = CheckResultsState.UNKNOWN.toString()
+                break
+        }
+    }
+    
+    const checkResultObject = {
+        "checkresults": [
+            {
+                "checkresult": {
+                    "type": "host"
+                },
+                "hostname": `${distributorID}`,
+                "state": `${state}`,
+                "output": `${message}`
+            },
+            {
+                "checkresult": {
+                    "type": "service"
+                },
+                "hostname": `${distributorID}`,
+                "servicename": `${service}`,
+                "state": `${state}`,
+                "output": `${message}`
+            }
+        ]
+    }
+
+    const urlWithParameters = url + '?' + `token=${token}` + '&' + `cmd=${cmd}` + '&' + `json=${JSON.stringify(checkResultObject)}`
+    var nagiosResponse = await (await fetch(urlWithParameters, { method: "POST" })).json();
+
+    if (nagiosResponse.result.status == 0) {
+        console.log(JSON.stringify({Result: "Sent data to Nagios", Response: nagiosResponse}))
+    } else {
+        console.error(JSON.stringify({Result: "Could not send data to Nagios", Response: nagiosResponse}))
     }
 }
 
