@@ -1,6 +1,5 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { IPepFieldValueChangeEvent } from '@pepperi-addons/ngx-lib';
 import { AppService } from "../app.service";
 import { PepDialogService, PepDialogActionButton} from "@pepperi-addons/ngx-lib/dialog";
 import { PepDialogData } from "@pepperi-addons/ngx-lib/dialog";
@@ -11,12 +10,13 @@ import { ActivatedRoute } from '@angular/router';
   templateUrl: './pepperi-health-monitor-settings-edit.component.html',
   styleUrls: ['./pepperi-health-monitor-settings-edit.component.scss']
 })
+
 export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
   type;
   typeData;
-  isSupport; 
+  isSupport;
 
-  constructor(      
+  constructor(
     private translate: TranslateService,
     private appService: AppService,
     private dialogService: PepDialogService,
@@ -25,34 +25,34 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
   ngOnInit() {
     let params = (new URL(window.location.href)).searchParams;
     this.type = params.get("Type");
-    this.isSupport = params.get("support_user")==null? false: (params.get("support_user")=="true");
+    this.isSupport = params.get("support_user") == null ? false : (params.get("support_user") == "true");
 
     //this.type = this.route.snapshot.params.Type;
-    //this.isSupport = this.route.snapshot.params["support_user"]; 
+    //this.isSupport = this.route.snapshot.params["support_user"];
 
-    this.appService.postAddonServerAPI('api','health_monitor_type_alert_edit',{Type:this.type},{})
-    .subscribe((result: any) => {
-      this.typeData = result;
-    });
+    this.appService.postAddonServerAPI('api', 'health_monitor_type_alert_edit', { Type: this.type }, {})
+      .subscribe((result: any) => {
+        this.typeData = result;
+      });
   }
 
   onBack() {
-    window.location.href =window.location.origin + '/settings/7e15d4cc-55a7-4128-a9fe-0e877ba90069/health-monitor-settings';
+    window.location.href = window.location.origin + '/settings/7e15d4cc-55a7-4128-a9fe-0e877ba90069/health-monitor-settings';
   }
 
   onSave() {
-    this.typeData.Type = this.type;
-     this.appService.postAddonServerAPI('api','health_monitor_type_alert_save',this.typeData,{})
-    .subscribe((result: any) => {
-      const response =result;
-      if (response.Success){
-        window.location.href =window.location.origin + '/settings/7e15d4cc-55a7-4128-a9fe-0e877ba90069/health-monitor-settings';
-      }
-      else{
-        this.openDialog("Error",response.ErrorMessage)
-      }
-    });
-    
+    this.typeData.Type = this.type
+
+    this.appService.postAddonServerAPI('api', 'health_monitor_type_alert_save', this.typeData, {})
+      .subscribe((result: any) => {
+        const response = result
+        if (response.Success) {
+          window.location.href = window.location.origin + '/settings/7e15d4cc-55a7-4128-a9fe-0e877ba90069/health-monitor-settings';
+        }
+        else {
+          this.openDialog("Error", response.ErrorMessage)
+        }
+      });
   }
 
   openDialog(title: string, content: string, callback?: any) {
@@ -61,7 +61,7 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
       className: "",
       callback: callback,
     };
- 
+
     const dialogData = new PepDialogData({
       title: title,
       content: content,
@@ -75,8 +75,11 @@ export class PepperiHealthMonitorSettingsEditComponent implements OnInit {
       });
   }
 
-  onValueChanged(event: IPepFieldValueChangeEvent) {
-    this.typeData[event.key] =event.value;
+  onIntervalChanged(interval) {
+    this.typeData.Interval = interval
   }
 
+  onWebhookChange(webhook: string) {
+    this.typeData.Webhook = webhook
+  }
 }
