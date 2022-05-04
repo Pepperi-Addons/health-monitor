@@ -13,6 +13,7 @@ import { DEFAULT_MONITOR_LEVEL } from './installation';
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 };
+
 const errors = {
     "SUCCESS": { "Message": 'SyncFailed test succeeded', "Color": "00FF00" },
     "JOB-EXECUTION-REPORT": { "Message": 'JobExecutionFailed test finished', "Color": "990000" },
@@ -30,6 +31,8 @@ const errors = {
     "TIMEOUT-SYNC": { "Message": 'Sync call timeout', "Color": "FF0000" },
     "TIMEOUT-SYNC-FAILED-TEST": { "Message": 'sync_failed test got timeout', "Color": "FF0000" }
 };
+
+const KEY_FOR_TOKEN = 'NagiosToken'
 
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
@@ -845,7 +848,7 @@ async function ReportError(monitorSettingsService: MonitorSettingsService, distr
     ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
     // report error to Nagios
-    await ReportErrorToNagios(distributor.InternalID, errorCode, generalErrorMessage)
+    await ReportErrorToNagios(monitorSettingsService.papiClient, distributor.InternalID, errorCode, generalErrorMessage)
 
     return errorMessage;
 }
@@ -1038,41 +1041,20 @@ async function ReportErrorWebhook(monitorSettingsService, errorCode, type, inner
     }
 }
 
-export async function ReportErrorToNagios(distributorID: string, service: string, message: string) {
-    const url = "https://nagios.pepperi.com/nrdp/"
-    const token = "" //todo: need to get token from KMS
-    const cmd = "submitcheck"
-
-    enum CheckResultsState {
-        OK          = 0,    // UP
-        WARNING     = 1,    // UP or DOWN/UNREACHABLE*
-        CRITICAL    = 2,    // DOWN/UNREACHABLE
-        UNKNOWN     = 4     // DOWN/UNREACHABLE
-    }
-
-    // Determine state using errorCode as we do know the error level
-    let state: string
-
-    if (errors[service] === undefined) {
-        state = CheckResultsState.WARNING.toString()
-    } else {
-        switch (errors[service]["Color"]) {
-            case '00FF00': // Green
-                state = CheckResultsState.OK.toString()
-                break
-            case 'FFFF00': // Yellow
-                state = CheckResultsState.WARNING.toString()
-                break
-            case '990000': // Other red
-            case 'FF0000': // Red
-                state = CheckResultsState.CRITICAL.toString()
-                break
-            default:
-                state = CheckResultsState.UNKNOWN.toString()
-                break
-        }
+export async function ReportErrorToNagios(papiClient: PapiClient, distributorID: string, service: string, message: string) {
+    let token = ''
+    try {
+        token = (await papiClient.get(`/kms/${KEY_FOR_TOKEN}`)).Value
+        console.log(`Got nagios token ${token.substring(0, token.length / 2)}`)
+    } catch (error) {
+        console.error(`Could not get nagios token - will not send status, error: ${JSON.stringify(error)}`)
+        return
     }
     
+    const state = getNagiosReportState(service)
+    const url = "https://nagios.pepperi.com/nrdp/"
+    const cmd = "submitcheck"
+
     const checkResultObject = {
         "checkresults": [
             {
@@ -1103,6 +1085,40 @@ export async function ReportErrorToNagios(distributorID: string, service: string
     } else {
         console.error(JSON.stringify({Result: "Could not send data to Nagios", Response: nagiosResponse}))
     }
+}
+
+function getNagiosReportState(service: string): string {
+    enum CheckResultsState {
+        OK          = 0,    // UP
+        WARNING     = 1,    // UP or DOWN/UNREACHABLE*
+        CRITICAL    = 2,    // DOWN/UNREACHABLE
+        UNKNOWN     = 4     // DOWN/UNREACHABLE
+    }
+
+    // Determine state using errorCode as we do know the error level
+    let state: string
+
+    if (errors[service] === undefined) {
+        state = CheckResultsState.WARNING.toString()
+    } else {
+        switch (errors[service]["Color"]) {
+            case '00FF00': // Green
+                state = CheckResultsState.OK.toString()
+                break
+            case 'FFFF00': // Yellow
+                state = CheckResultsState.WARNING.toString()
+                break
+            case '990000': // Other red
+            case 'FF0000': // Red
+                state = CheckResultsState.CRITICAL.toString()
+                break
+            default:
+                state = CheckResultsState.UNKNOWN.toString()
+                break
+        }
+    }
+
+    return state
 }
 
 async function GetDistributor(monitorSettingsService: MonitorSettingsService) {
