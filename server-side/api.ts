@@ -1045,7 +1045,6 @@ export async function ReportErrorToNagios(papiClient: PapiClient, distributorID:
     let token = ''
     try {
         token = (await papiClient.get(`/kms/${KEY_FOR_TOKEN}`)).Value
-        console.log(`Got nagios token ${token.substring(0, token.length / 2)}`)
     } catch (error) {
         console.error(`Could not get nagios token - will not send status, error: ${JSON.stringify(error)}`)
         return
