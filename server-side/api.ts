@@ -1044,7 +1044,7 @@ async function ReportErrorWebhook(monitorSettingsService, errorCode, type, inner
 export async function ReportErrorToNagios(papiClient: PapiClient, distributorID: string, service: string, message: string) {
     let token = ''
     try {
-        token = (await papiClient.get(`/kms/${KEY_FOR_TOKEN}`)).Value
+        token = (await papiClient.get(`/kms/parameters/${KEY_FOR_TOKEN}`)).Value
     } catch (error) {
         console.error(`Could not get nagios token - will not send status, error: ${JSON.stringify(error)}`)
         return
