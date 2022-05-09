@@ -788,14 +788,14 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
             };
         }
 
-        reports.forEach(async report => {
+        for (const report of reports) {
             let resultTable = ""
             if ('InternalErrors' in report) {
                 resultTable = ErrorInterfaceToHtmlTable(report.InternalErrors!);
             }
             const errorString = JSON.stringify(report.InternalErrors);
             await ReportError(monitorSettingsService, distributorCache, report.Code, report.Type, errorString, resultTable, report.AddonUUID, report.GeneralErrorMessage);
-        });
+        }
 
         console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
         return {
