@@ -48,12 +48,12 @@ export async function sync_failed(client: Client, request: Request) {
         monitorSettings = await monitorSettingsService.getMonitorSettings();
     }
     catch (_) {
-        await StatusUpdate(monitorSettingsService, false, false, 'GET-ADAL-FAILED')
+        await StatusUpdate(client, monitorSettingsService, false, false, 'GET-ADAL-FAILED')
     }
 
     let timeout = setTimeout(async function () {
         //return 'TIMEOUT-GET-UDT';
-        await StatusUpdate(monitorSettingsService, false, false, 'TIMEOUT-SYNC-FAILED-TEST', '', monitorSettings);
+        await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-SYNC-FAILED-TEST', '', monitorSettings);
     }, 270000); //4.5 minutes
 
     try {
@@ -71,18 +71,18 @@ export async function sync_failed(client: Client, request: Request) {
             }
         }
 
-        errorCode = await SyncFailedTest(monitorSettingsService, monitorSettings);
+        errorCode = await SyncFailedTest(client, monitorSettingsService, monitorSettings);
 
         if (errorCode == 'SUCCESS') {
             succeeded = true;
         }
-        errorMessage = await StatusUpdate(monitorSettingsService, lastStatus, succeeded, errorCode, '', monitorSettings);
+        errorMessage = await StatusUpdate(client, monitorSettingsService, lastStatus, succeeded, errorCode, '', monitorSettings);
     }
     catch (error) {
         clearTimeout(timeout);
         succeeded = false;
         const innerError = Utils.GetErrorDetailsSafe(error, 'stack')
-        errorMessage = await StatusUpdate(monitorSettingsService, false, succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
+        errorMessage = await StatusUpdate(client, monitorSettingsService, false, succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
     }
     finally {
         clearTimeout(timeout);
@@ -495,7 +495,7 @@ export async function usage_callback(client: Client, request: Request) {
 //#endregion
 
 //#region health monitor tests
-export async function SyncFailedTest(monitorSettingsService, monitorSettings) {
+export async function SyncFailedTest(client, monitorSettingsService, monitorSettings) {
     let udtResponse;
     let syncResponse;
     let statusResponse;
@@ -512,7 +512,7 @@ export async function SyncFailedTest(monitorSettingsService, monitorSettings) {
         console.log('HealthMonitorAddon, SyncFailedTest start first GET udt');
         timeout = setTimeout(async function () {
             //return 'TIMEOUT-GET-UDT';
-            await StatusUpdate(monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+            await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
         }, 30000);
         start = Date.now();
         udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -573,7 +573,7 @@ export async function SyncFailedTest(monitorSettingsService, monitorSettings) {
         console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
         timeout = setTimeout(async function () {
             //return 'TIMEOUT-SYNC';
-            await StatusUpdate(monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
+            await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
         }, 120000);
         start = Date.now();
         syncResponse = await monitorSettingsService.papiClient.post('/application/sync', body);
@@ -602,7 +602,7 @@ export async function SyncFailedTest(monitorSettingsService, monitorSettings) {
             console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
             timeout = setTimeout(async function () {
                 //return 'TIMEOUT-GET-UDT';
-                await StatusUpdate(monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+                await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
             }, 30000);
             start = Date.now();
             udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -835,6 +835,7 @@ async function validateBeforeTest(monitorSettingsService, monitorSettings) {
 
     return true;
 }
+
 
 async function ReportError(monitorSettingsService: MonitorSettingsService, distributor, errorCode, type, innerMessage = "", htmlTable = "", addonUUID = "", generalErrorMessage = "") {
     const environmant = jwtDecode(monitorSettingsService.clientData.OAuthAccessToken)["pepperi.datacenter"];
@@ -1169,26 +1170,60 @@ async function UpdateMonitorSettingsSyncFailed(monitorSettingsService, distribut
     const settingsResponse = await monitorSettingsService.setMonitorSettings(monitorSettings);
 }
 
-async function StatusUpdate(monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
+async function StatusUpdate(client, monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
     let errorMessage = '';
     let distributor;
     const statusChanged = lastStatus ? !success : success; // xor (true, false) -> true 
 
     if (!success) { //write to channel 'System Status' if the test failed
         distributor = await GetDistributorCache(monitorSettingsService, monitorSettings);
-        errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        //errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        //api call to system health instead of reporting directly
+        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
         await UpdateMonitorSettingsSyncFailed(monitorSettingsService, distributor, success);
     }
     else if (statusChanged) { //write to channel 'System Status' on the first time when test changes from fail to success
         distributor = await GetDistributorCache(monitorSettingsService, monitorSettings);
-        errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        //errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
         await UpdateMonitorSettingsSyncFailed(monitorSettingsService, distributor, success);
     }
     else {
         distributor = GetDistributorCache(monitorSettingsService, monitorSettings);
-        errorMessage = await ReportErrorCloudWatch(distributor, errorCode, "SYNC-FAILED", innerMessage);
+        //errorMessage = await ReportErrorCloudWatch(distributor, errorCode, "SYNC-FAILED", innerMessage);
+        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
     }
 
+    return errorMessage;
+}
+
+async function systemHealthReportError(client, monitorSettingsService, distributor, errorCode, type, innerMessage, generalErrorMessage = ""){
+    let headers = {
+        "X-Pepperi-OwnerID" : client.AddonUUID,
+        "X-Pepperi-SecretKey" : client.AddonSecretKey
+    }
+
+    const alertBody = {
+        DistributorID: distributor.InternalID,
+        AlertCode: errorCode
+    };
+
+    //get Message
+    const alertLogicResponse = await monitorSettingsService.papiClient.post('/var/addons/health_monitor/alerts', alertBody);
+    
+    let body = {
+        Name: "Sync failed",
+        Description: type,
+        Status: "Error",
+        Message: errors[alertLogicResponse.AlertCode]["Message"]
+    }
+
+    const Url: string = `system_Health/notifications`;
+    //api call to system health instead of reporting directly
+    const res = await monitorSettingsService.papiClient.post(Url, body, headers);
+
+    //construct error message
+    const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
     return errorMessage;
 }
 
