@@ -38,11 +38,14 @@ const KEY_FOR_TOKEN = 'NagiosToken'
 export async function sync_failed_modified(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
     const monitorSettingsService = new MonitorSettingsService(client);
-    let errorCode = '';
-    let succeeded = false;
     let errorMessage = '';
     let lastStatus;
     let monitorSettings = {};
+
+    let syncParams = {
+        errorCode: "",
+        succeeded : false
+    }
 
     let systemHealthBody = {
         Status: "",
@@ -63,60 +66,80 @@ export async function sync_failed_modified(client: Client, request: Request) {
 
     try{
         lastStatus = monitorSettings['SyncFailed'] ? monitorSettings['SyncFailed'].Status : false;
-        let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='00000000-0000-0000-0000-000000abcdef'&order_by=CreationDateTime DESC`;
-        let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
-        
-        if(auditLogResult){
-            let firstAuditLogResult = auditLogResult[0];
-            let statusID = firstAuditLogResult['Status']['ID'];
-            let numberOfTry = firstAuditLogResult['AuditInfo']['JobMessageData']['NumberOfTry'];
-
-            //If at least one sync failure (3 retries or ‘Status=failure’) is found - run an internal sync
-            if(numberOfTry >= 3 || statusID == 0){
-                errorCode = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
-                if (errorCode == 'SUCCESS') {
-                    succeeded = true;
-                    updateSystemHealthBody(systemHealthBody, 'Warning', "Sync succeeded but previously failed for some users");
-                } else{
-                    updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
-                }
-            }
-            //Else If no sync errors were found and at least one sync success is found
-            else{
-                if(statusID == 1){
-                    updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
-                }
-            }
-        }
-        //Else – If there is no sync in the log:
-        else{
-            if(monitorSettings['MonitorLevel'] === DEFAULT_MONITOR_LEVEL){
-                errorCode = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
-                if (errorCode == 'SUCCESS') {
-                    succeeded = true;
-                    updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
-                } else{
-                    updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
-                }
-            }
-        }
-        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, succeeded, errorCode, '', monitorSettings);
+        await syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams);
+        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, syncParams.succeeded, syncParams.errorCode, '', monitorSettings);
     }
     catch (error) {
         clearTimeout(timeout);
-        succeeded = false;
+        syncParams.succeeded = false;
         const innerError = Utils.GetErrorDetailsSafe(error, 'stack')
-        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
+        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, syncParams.succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
     }
     finally {
         clearTimeout(timeout);
     }
 
     return {
-        success: succeeded,
+        success: syncParams.succeeded,
         errorMessage: errorMessage
     };
 };
+
+async function syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams){
+    let syncUUID = '00000000-0000-0000-0000-000000abcdef';
+    let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}'&order_by=CreationDateTime DESC`;
+    let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
+    
+    if(auditLogResult){
+        let firstAuditLogResult = auditLogResult[0];
+        let statusID = firstAuditLogResult['Status']['ID'];
+        let numberOfTry = firstAuditLogResult['AuditInfo']['JobMessageData']['NumberOfTry'];
+        await auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry);
+        return;
+    }
+    //Else – If there is no sync in the log, and monitor level is high
+    if(monitorSettings['MonitorLevel'] === DEFAULT_MONITOR_LEVEL){
+        syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+        caseNoSyncInLogs(systemHealthBody, syncParams)
+    }
+}
+
+async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry){
+    //If at least one sync failure (3 retries or ‘Status=failure’) is found - run an internal sync
+    if(numberOfTry >= 3 || statusID == 0){
+        syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+        caseSyncFailed(systemHealthBody, syncParams)
+    }
+    //Else If no sync errors were found and at least one sync success is found
+    else{
+        if(statusID == 1){
+            syncParams['succeeded'] = true;
+            updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
+        }
+    }
+}
+
+//In case of 3 retries or ‘Status=failure’
+function caseSyncFailed(systemHealthBody, syncParams){
+    //If internal sync succeeded
+    if (syncParams['errorCode'] == 'SUCCESS') {
+        syncParams['succeeded'] = true;
+        updateSystemHealthBody(systemHealthBody, 'Warning', "Sync succeeded but previously failed for some users");
+    } else{
+        updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
+    }
+}
+
+//In case there is no sync in the log
+function caseNoSyncInLogs(systemHealthBody, syncParams){
+    //If internal sync succeeded
+    if (syncParams['errorCode'] == 'SUCCESS') {
+        syncParams['succeeded'] = true;
+        updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
+    } else{
+        updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
+    }
+}
 
 function updateSystemHealthBody(systemHealthBody, status: string, message: string){
     systemHealthBody['Status'] = status;
