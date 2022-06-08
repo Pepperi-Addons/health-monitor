@@ -35,18 +35,14 @@ const errors = {
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 //#region health monitor api
+//mechanism to check for sync failure - run an internal sync and update relevant webhooks 
 export async function sync_failed_modified(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
     const monitorSettingsService = new MonitorSettingsService(client);
     let errorMessage = '';
     let lastStatus;
     let monitorSettings = {};
-
-    let syncParams = {
-        errorCode: "",
-        succeeded : false
-    }
-
+    let syncParams: any = {};
     let systemHealthBody = {
         Status: "",
         Message: ""
@@ -66,7 +62,7 @@ export async function sync_failed_modified(client: Client, request: Request) {
 
     try{
         lastStatus = monitorSettings['SyncFailed'] ? monitorSettings['SyncFailed'].Status : false;
-        await syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams);
+        let syncParams = await syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody);
         errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, syncParams.succeeded, syncParams.errorCode, '', monitorSettings);
     }
     catch (error) {
@@ -85,7 +81,11 @@ export async function sync_failed_modified(client: Client, request: Request) {
     };
 };
 
-async function syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams){
+async function syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody){
+    let syncParams = {
+        errorCode: "",
+        succeeded : false
+    }
     let syncUUID = '00000000-0000-0000-0000-000000abcdef';
     let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}'&order_by=CreationDateTime DESC`;
     let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
@@ -95,20 +95,21 @@ async function syncMonitoring(client, monitorSettingsService, monitorSettings, s
         let statusID = firstAuditLogResult['Status']['ID'];
         let numberOfTry = firstAuditLogResult['AuditInfo']['JobMessageData']['NumberOfTry'];
         await auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry);
-        return;
+    } else{
+        //Else – If there is no sync in the log, and monitor level is high
+        if(monitorSettings['MonitorLevel'] === DEFAULT_MONITOR_LEVEL){
+            syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+            updateParams(systemHealthBody, syncParams, 'Success', "Sync succeeded")
+        }
     }
-    //Else – If there is no sync in the log, and monitor level is high
-    if(monitorSettings['MonitorLevel'] === DEFAULT_MONITOR_LEVEL){
-        syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
-        caseNoSyncInLogs(systemHealthBody, syncParams)
-    }
+    return syncParams;
 }
 
 async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry){
-    //If at least one sync failure (3 retries or ‘Status=failure’) is found - run an internal sync
+    //If there were 3 retries or ‘Status=failure’ - run an internal sync
     if(numberOfTry >= 3 || statusID == 0){
         syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
-        caseSyncFailed(systemHealthBody, syncParams)
+        updateParams(systemHealthBody, syncParams, 'Warning', "Sync succeeded but previously failed for some users")
     }
     //Else If no sync errors were found and at least one sync success is found
     else{
@@ -119,23 +120,13 @@ async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings,
     }
 }
 
-//In case of 3 retries or ‘Status=failure’
-function caseSyncFailed(systemHealthBody, syncParams){
+//In case of 3 retries or ‘Status=failure’ or in case there is no sync in the log, update the relevant parameters
+function updateParams(systemHealthBody, syncParams, status, message){
+    let internalSyncResponse = syncParams['errorCode'];
     //If internal sync succeeded
-    if (syncParams['errorCode'] == 'SUCCESS') {
+    if (internalSyncResponse == 'SUCCESS') {
         syncParams['succeeded'] = true;
-        updateSystemHealthBody(systemHealthBody, 'Warning', "Sync succeeded but previously failed for some users");
-    } else{
-        updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
-    }
-}
-
-//In case there is no sync in the log
-function caseNoSyncInLogs(systemHealthBody, syncParams){
-    //If internal sync succeeded
-    if (syncParams['errorCode'] == 'SUCCESS') {
-        syncParams['succeeded'] = true;
-        updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
+        updateSystemHealthBody(systemHealthBody, status, message);
     } else{
         updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
     }
@@ -146,6 +137,7 @@ function updateSystemHealthBody(systemHealthBody, status: string, message: strin
     systemHealthBody['Message'] = message;
 }
 
+//old mechanism to check for sync failure
 /*
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
