@@ -17,7 +17,7 @@ import Semver from "semver";
 import UsageRelationService from "./relations.usage.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
-export const DEFAULT_MONITOR_LEVEL = 15 // Minutes
+export const DEFAULT_MONITOR_LEVEL = 30 // Every 30 min
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -248,6 +248,17 @@ exports.upgrade = async (client: Client, request: Request) => {
     try {
         let addon = await monitorSettingsService.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => { return Number(item) }) || [];
+        if (Semver.lte(request.body.FromVersion, '2.0.51')) {
+            const distributor = await GetDistributor(monitorSettingsService.papiClient);
+            let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
+            let data = monitorSettings['Data'];
+            data['SyncFailed']['LastUpdate'] = null;
+            const settingsBodyADAL = {
+                Key: distributor.InternalID.toString(),
+                Data: data
+            };
+            await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+        }
 
         // upgrade to 2.0 or 1.0 versions
         if (version.length == 3 && version[0] < 2) {
@@ -288,7 +299,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             let data = {}
 
             // On update invalidate all old values of monitor value, so all dist will default to a valid value.
-            if (currentMonitorLevel !== undefined && VALID_MONITOR_LEVEL_VALUES.includes(currentMonitorLevel)) {
+            if (currentMonitorLevel !== undefined && Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel)) {
                 data["MonitorLevel"] = currentMonitorLevel
             } else {
                 data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
