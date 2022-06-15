@@ -86,18 +86,16 @@ async function syncMonitoring(client, monitorSettingsService, monitorSettings, s
         errorCode: "",
         succeeded : false
     }
-    let syncUUID = '00000000-0000-0000-0000-000000abcdef';
-    let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}'&order_by=CreationDateTime DESC`;
-    let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
+    let auditLogResult = await getAuditLogResult(monitorSettingsService, monitorSettings);
     
-    if(auditLogResult){
+    //If there were sync objects in audit log
+    if(auditLogResult.length != 0){
         let firstAuditLogResult = auditLogResult[0];
-        let statusID = firstAuditLogResult['Status']['ID'];
-        let numberOfTry = firstAuditLogResult['AuditInfo']['JobMessageData']['NumberOfTry'];
-        await auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry);
+        let foundError = findSyncErrorInLogs(auditLogResult)   
+        await auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, foundError, firstAuditLogResult);
     } else{
         //Else – If there is no sync in the log, and monitor level is high
-        if(monitorSettings['MonitorLevel'] === DEFAULT_MONITOR_LEVEL){
+        if(monitorSettings['MonitorLevel'] === 'High'){
             syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
             updateParams(systemHealthBody, syncParams, 'Success', "Sync succeeded")
         }
@@ -105,15 +103,45 @@ async function syncMonitoring(client, monitorSettingsService, monitorSettings, s
     return syncParams;
 }
 
-async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, statusID, numberOfTry){
-    //If there were 3 retries or ‘Status=failure’ - run an internal sync
-    if(numberOfTry >= 3 || statusID == 0){
+//If there were 3 retries or ‘Status=failure’
+function findSyncErrorInLogs(auditLogResult){
+    let foundError = false;
+    for (let auditLog of auditLogResult) {
+        if(auditLog['Status']['ID'] == 0 || auditLog['AuditInfo']['JobMessageData']['NumberOfTry'] >= 3){
+            foundError = true;
+            break;
+        }
+    }
+}
+
+async function getAuditLogResult(monitorSettingsService, monitorSettings){
+    let syncUUID = '00000000-0000-0000-0000-000000abcdef';
+    let lastUpdateAudit = monitorSettings['SyncFailed']['LastUpdate'];
+    let currentDate = new Date();
+    let minutesToMinus = 30; //if there is no last update time- take 30 minutes back
+    let lastUpdate = lastUpdateAudit ?  lastUpdateAudit : (new Date(currentDate.getTime() - minutesToMinus*60000)).toISOString(); //for first insertion to the table- check 5 minutes back
+    let currentUpdate = (new Date()).toISOString();
+
+    //filter audit log data to return only sync objects from the last update time
+    let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and CreationDateTime>='${lastUpdate}'&fields=Status,AuditInfo`;
+    let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
+    monitorSettings['SyncFailed']['LastUpdate'] = currentUpdate;
+
+    //update LastUpdate time in monitorSettings table
+    const settingsResponse = await monitorSettingsService.setMonitorSettings(monitorSettings);
+    return auditLogResult;
+}
+
+async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, foundError, firstAuditLogResult){
+    //foundError - If there were 3 retries or ‘Status=failure’ - run an internal sync
+    if(foundError){
         syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
         updateParams(systemHealthBody, syncParams, 'Warning', "Sync succeeded but previously failed for some users")
     }
     //Else If no sync errors were found and at least one sync success is found
     else{
-        if(statusID == 1){
+        let firstSyncStatusID = firstAuditLogResult['Status']['ID'];
+        if(firstSyncStatusID == 1){
             syncParams['succeeded'] = true;
             updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
         }
