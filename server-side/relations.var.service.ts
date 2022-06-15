@@ -7,7 +7,8 @@ import { IPepGenericFormDataView } from '@pepperi-addons/ngx-composite-lib/gener
 //monitor object every x minutes
 export enum VALID_MONITOR_LEVEL_VALUES {
     Never = 0,
-    Low = 30,   //every 30 minutes
+    Low = 15,   //every 30 minutes
+    Medium = 5,   //every 5 minutes
     High = 5    //every 5 minutes
   }
 
@@ -57,7 +58,7 @@ const SystemHealthFields: any[] = [
                 Vertical: 'Stretch'
             }
         },
-        OptionalValues: [{ Key: "Low", Value: "Low: Every 30 min" }, { Key: "High", Value: "High: Every 5 min + pro active" }, { Key: "Never", Value: "Never" }]
+        OptionalValues: [{ Key: "Low", Value: "Low: Every 15 min" }, { Key: "High", Value: "High: Every 5 min + pro active" }, { Key: "Medium", Value: "Medium: Every 5 min" }, { Key: "Never", Value: "Never" }]
     }
 ]
 

@@ -17,7 +17,7 @@ import Semver from "semver";
 import UsageRelationService from "./relations.usage.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
-export const DEFAULT_MONITOR_LEVEL = 30 // Every 30 min
+export const DEFAULT_MONITOR_LEVEL = "Low" // Every 15 min
 
 exports.install = async (client: Client, request: Request) => {
     try {
