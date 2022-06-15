@@ -96,7 +96,7 @@ async function syncMonitoring(client, monitorSettingsService, monitorSettings, s
     } else{
         //Else – If there is no sync in the log, and monitor level is high
         if(monitorSettings['MonitorLevel'] === 'High'){
-            syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+            syncParams['errorCode'] = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
             updateParams(systemHealthBody, syncParams, 'Success', "Sync succeeded")
         }
     }
@@ -135,7 +135,7 @@ async function getAuditLogResult(monitorSettingsService, monitorSettings){
 async function auditLogNotEmpty(client, monitorSettingsService, monitorSettings, systemHealthBody, syncParams, foundError, firstAuditLogResult){
     //foundError - If there were 3 retries or ‘Status=failure’ - run an internal sync
     if(foundError){
-        syncParams['errorCode'] = await SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+        syncParams['errorCode'] = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
         updateParams(systemHealthBody, syncParams, 'Warning', "Sync succeeded but previously failed for some users")
     }
     //Else If no sync errors were found and at least one sync success is found
@@ -629,7 +629,7 @@ export async function usage_callback(client: Client, request: Request) {
 //#endregion
 
 //#region health monitor tests
-export async function SyncFailedTest(systemHealthBody, client, monitorSettingsService, monitorSettings) {
+export async function InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings) {
     let udtResponse;
     let syncResponse;
     let statusResponse;

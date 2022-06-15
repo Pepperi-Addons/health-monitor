@@ -4,10 +4,11 @@ import MonitorSettingsService from './monitor-settings.service';
 import { GetMonitorCronExpression } from './installation';
 import { IPepGenericFormDataView } from '@pepperi-addons/ngx-composite-lib/generic-form';
 
+//monitor object every x minutes
 export enum VALID_MONITOR_LEVEL_VALUES {
     Never = 0,
-    Low = 30,
-    High = 5
+    Low = 30,   //every 30 minutes
+    High = 5    //every 5 minutes
   }
 
 const SystemHealthFields: any[] = [

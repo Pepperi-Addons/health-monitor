@@ -252,7 +252,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
             let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
             let data = monitorSettings['Data'];
-            data['SyncFailed']['LastUpdate'] = null;
+            data['SyncFailed']['LastUpdate'] = 0;
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
                 Data: data
