@@ -2,32 +2,91 @@ import { PapiClient, InstalledAddon, Relation } from '@pepperi-addons/papi-sdk'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
 import { GetMonitorCronExpression } from './installation';
+import { IPepGenericFormDataView } from '@pepperi-addons/ngx-composite-lib/generic-form';
 
-export const VALID_MONITOR_LEVEL_VALUES = [5, 15] // Minutes
+//monitor object every x minutes
+export enum VALID_MONITOR_LEVEL_VALUES {
+    Never = 0,
+    Low = 15,   //every 30 minutes
+    Medium = 5,   //every 5 minutes
+    High = 5    //every 5 minutes
+  }
+
+const SystemHealthFields: any[] = [
+    {
+        FieldID: 'MemoryUsageLimit',
+        Type: 'TextBox',
+        Title: 'Memory Usage Limit',
+        Mandatory: false,
+        ReadOnly: false,
+        Layout: {
+            Origin: {
+                X: 0,
+                Y: 1
+            },
+            Size: {
+                Width: 1,
+                Height: 0
+            }
+        },
+        Style: {
+            Alignment: {
+                Horizontal: 'Stretch',
+                Vertical: 'Stretch'
+            }
+        }
+    },
+    {
+        FieldID: 'MonitorLevel',
+        Type: 'ComboBox',
+        Title: 'Monitor Level',
+        Mandatory: false,
+        ReadOnly: false,
+        Layout: {
+            Origin: {
+                X: 1,
+                Y: 2
+            },
+            Size: {
+                Width: 1,
+                Height: 0
+            }
+        },
+        Style: {
+            Alignment: {
+                Horizontal: 'Stretch',
+                Vertical: 'Stretch'
+            }
+        },
+        OptionalValues: [{ Key: "Low", Value: "Low: Every 15 min" }, { Key: "High", Value: "High: Every 5 min + pro active" }, { Key: "Medium", Value: "Medium: Every 5 min" }, { Key: "Never", Value: "Never" }]
+    }
+]
+
+
+const healthMonitorDataView: IPepGenericFormDataView = {
+    UID: 'ABCD-DCBA-FGHD-POLK',
+    Type: 'Form',
+    Hidden: false,
+    Columns: [{}],
+    Context: {
+        Object: {
+            Resource: "None",
+            InternalID: 1,
+        },
+        Name: 'System Health data view',
+        ScreenSize: 'Tablet',
+        Profile: {
+            InternalID: 1,
+            Name: 'MyProfile'
+        }
+    },
+    Fields: SystemHealthFields,
+    Rows: []
+};
+
 
 interface FieldData {
-    Id: string,
-    Value: string
-}
-export interface SettingsData {
-    Fields: [FieldData]
-}
-
-function instanceOfSettingsData(object: any): object is SettingsData {
-    let isValid = true;
-
-    isValid = isValid && 'Fields' in object;
-
-    object.Fields.forEach((field: FieldData) => {
-        isValid = isValid && 'Id' in field;
-        isValid = isValid && 'Value' in field;
-
-        if (!isValid) {
-            return isValid;
-        }
-    });
-
-    return isValid;
+    Id: string
 }
 
 export class VarRelationService {
@@ -56,55 +115,26 @@ export class VarRelationService {
             Description: "Health Monitor relation to Var Settings, Var users can edit monitor settings via the Var addon",
             AddonRelativeURL: "/api/var_settings_callback",
 
-            AdditionalParams: {
-                Title: "Health Monitor",
-                Fields: [{
-                    Id: this.monitorLevelSettingId,
-                    Label: "Monitor Level",
-                    PepComponent: "textbox",
-                    Type: "int",
-                    Disabled: false
-                }, {
-                    Id: this.addonDailyUsageId,
-                    Label: "Addon Daily Usage Limit",
-                    PepComponent: "textbox",
-                    Type: "int",
-                    Disabled: false
-                }]
-            }
+            Title: "SystemHealth", //The title of the tab in which the fields will appear
+            DataView: healthMonitorDataView
         }
     };
 
     async var_get_updated_settings(client: Client, request: Request) {
-        if (!instanceOfSettingsData(request.body)) {
-            const errorJson = {
-                ActionUUID: client.ActionUUID,
-                AddonUUID: client.AddonUUID,
-                Token: client.OAuthAccessToken,
-                Request: request.body,
-            }
-            throw new Error(`${JSON.stringify(errorJson)}`)
-        }
-        const settings = request.body as SettingsData;
+        const settings = request.body;
         const monitorSettingsService = new MonitorSettingsService(client);
 
-        const monitorLevelFieldData = settings.Fields.find(field => field.Id === this.monitorLevelSettingId) as FieldData;
-        const monitorLevelValue = parseInt(monitorLevelFieldData.Value);
-        
-        const addonDailyUsageFieldData = settings.Fields.find(field => field.Id === this.addonDailyUsageId) as FieldData;
-        const addonDailyUsageValue = parseInt(addonDailyUsageFieldData.Value);
-
+        const monitorLevelValue = settings.MonitorLevel;
+        const addonDailyUsageValue = settings.MemoryUsageLimit;
         console.log(`Got new values from VAR settings: ${JSON.stringify(settings)}`)
 
         // Update settings in ADAL
         let adalData = await monitorSettingsService.getMonitorSettings()
-        
-        if (VALID_MONITOR_LEVEL_VALUES.includes(monitorLevelValue)) {
-            adalData.MonitorLevel = monitorLevelValue
 
-            // Update cron expression
-            await this.update_cron_expression(monitorSettingsService, monitorLevelValue);
-        }
+        adalData.MonitorLevel = monitorLevelValue
+        let monitorLevelForCron = VALID_MONITOR_LEVEL_VALUES[`${monitorLevelValue}`]
+        await this.update_cron_expression(monitorSettingsService, monitorLevelForCron); // Update cron expression
+
         adalData.MemoryUsageLimit = addonDailyUsageValue
 
         const updateResult = await monitorSettingsService.setMonitorSettings(adalData);
@@ -116,18 +146,10 @@ export class VarRelationService {
         const monitorSettingsService = new MonitorSettingsService(client);
         const settings = await monitorSettingsService.getMonitorSettings();
 
-        return {
-            Fields: [
-                {
-                    Id: this.monitorLevelSettingId,
-                    Value: settings.MonitorLevel
-                },
-                {
-                    Id: this.addonDailyUsageId,
-                    Value: settings.MemoryUsageLimit
-                }
-            ]
-        }
+        return { 
+            MonitorLevel: settings.MonitorLevel,
+            MemoryUsageLimit: settings.MemoryUsageLimit
+        }        
     };
 
     async update_cron_expression(monitorSettingsService: MonitorSettingsService, monitorLevelValue: number) {

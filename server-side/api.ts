@@ -1,6 +1,6 @@
 import MonitorSettingsService from './monitor-settings.service'
 import RelationsService from './relations.service';
-import VarRelationService from './relations.var.service'
+import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from './relations.var.service'
 import UsageRelationService from './relations.usage.service'
 import { Utils } from './utils.service'
 import { Client, Request } from '@pepperi-addons/debug-server'
@@ -9,6 +9,7 @@ import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 import { DEFAULT_MONITOR_LEVEL } from './installation';
+import { SyncTest } from './sync_test .service';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -34,6 +35,57 @@ const errors = {
 
 const KEY_FOR_TOKEN = 'NagiosToken'
 
+//#region health monitor api
+//mechanism to check for sync failure - run an internal sync and update relevant webhooks 
+export async function sync_failed_modified(client: Client, request: Request) {
+    const syncTest = new SyncTest();
+    console.log('HealthMonitorAddon start SyncFailed test');
+    const monitorSettingsService = new MonitorSettingsService(client);
+    let errorMessage = '';
+    let lastStatus;
+    let monitorSettings = {};
+    let syncParams: any = {};
+    let systemHealthBody = {
+        Status: "",
+        Message: ""
+    }
+
+    try {
+        monitorSettings = await monitorSettingsService.getMonitorSettings();
+    }
+    catch (_) {
+        await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'GET-ADAL-FAILED')
+    }
+
+    let timeout = setTimeout(async function () {
+        //return 'TIMEOUT-GET-UDT';
+        await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC-FAILED-TEST', '', monitorSettings);
+    }, 270000); //4.5 minutes
+
+    try{
+        lastStatus = monitorSettings['SyncFailed'] ? monitorSettings['SyncFailed'].Status : false;
+        let syncParams = await syncTest.syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody);
+        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, syncParams.succeeded, syncParams.errorCode, '', monitorSettings);
+    }
+    catch (error) {
+        clearTimeout(timeout);
+        syncParams.succeeded = false;
+        const innerError = Utils.GetErrorDetailsSafe(error, 'stack')
+        errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, syncParams.succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
+    }
+    finally {
+        clearTimeout(timeout);
+    }
+
+    return {
+        success: syncParams.succeeded,
+        errorMessage: errorMessage
+    };
+};
+
+
+//old mechanism to check for sync failure
+/*
 //#region health monitor api
 export async function sync_failed(client: Client, request: Request) {
     console.log('HealthMonitorAddon start SyncFailed test');
@@ -93,6 +145,7 @@ export async function sync_failed(client: Client, request: Request) {
         errorMessage: errorMessage
     };
 };
+*/
 
 export async function job_limit_reached(client: Client, request: Request) {
     console.log('HealthMonitorAddon start JobLimitReached test');
@@ -414,7 +467,7 @@ export async function run_now(client: Client, request: Request) {
     switch (request.body.Type) {
         case "SYNC-FAILED":
             request.body.RunNow = true;
-            result = await sync_failed(client, request);
+            result = await sync_failed_modified(client, request);
             if (result.success) {
                 message = "Sync is successful";
             }
@@ -495,7 +548,7 @@ export async function usage_callback(client: Client, request: Request) {
 //#endregion
 
 //#region health monitor tests
-export async function SyncFailedTest(client, monitorSettingsService, monitorSettings) {
+export async function InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings) {
     let udtResponse;
     let syncResponse;
     let statusResponse;
@@ -512,7 +565,7 @@ export async function SyncFailedTest(client, monitorSettingsService, monitorSett
         console.log('HealthMonitorAddon, SyncFailedTest start first GET udt');
         timeout = setTimeout(async function () {
             //return 'TIMEOUT-GET-UDT';
-            await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+            await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
         }, 30000);
         start = Date.now();
         udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -573,7 +626,7 @@ export async function SyncFailedTest(client, monitorSettingsService, monitorSett
         console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
         timeout = setTimeout(async function () {
             //return 'TIMEOUT-SYNC';
-            await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
+            await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
         }, 120000);
         start = Date.now();
         syncResponse = await monitorSettingsService.papiClient.post('/application/sync', body);
@@ -602,7 +655,7 @@ export async function SyncFailedTest(client, monitorSettingsService, monitorSett
             console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
             timeout = setTimeout(async function () {
                 //return 'TIMEOUT-GET-UDT';
-                await StatusUpdate(client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+                await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
             }, 30000);
             start = Date.now();
             udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -1170,7 +1223,7 @@ async function UpdateMonitorSettingsSyncFailed(monitorSettingsService, distribut
     const settingsResponse = await monitorSettingsService.setMonitorSettings(monitorSettings);
 }
 
-async function StatusUpdate(client, monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
+async function StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
     let errorMessage = '';
     let distributor;
     const statusChanged = lastStatus ? !success : success; // xor (true, false) -> true 
@@ -1179,43 +1232,35 @@ async function StatusUpdate(client, monitorSettingsService, lastStatus, success,
         distributor = await GetDistributorCache(monitorSettingsService, monitorSettings);
         //errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
         //api call to system health instead of reporting directly
-        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        errorMessage = await systemHealthReportError(systemHealthBody, client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
         await UpdateMonitorSettingsSyncFailed(monitorSettingsService, distributor, success);
     }
     else if (statusChanged) { //write to channel 'System Status' on the first time when test changes from fail to success
         distributor = await GetDistributorCache(monitorSettingsService, monitorSettings);
         //errorMessage = await ReportError(monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
-        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        errorMessage = await systemHealthReportError(systemHealthBody, client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
         await UpdateMonitorSettingsSyncFailed(monitorSettingsService, distributor, success);
     }
     else {
         distributor = GetDistributorCache(monitorSettingsService, monitorSettings);
         //errorMessage = await ReportErrorCloudWatch(distributor, errorCode, "SYNC-FAILED", innerMessage);
-        errorMessage = await systemHealthReportError(client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
+        errorMessage = await systemHealthReportError(systemHealthBody, client, monitorSettingsService, distributor, errorCode, "SYNC-FAILED", innerMessage);
     }
 
     return errorMessage;
 }
 
-async function systemHealthReportError(client, monitorSettingsService, distributor, errorCode, type, innerMessage, generalErrorMessage = ""){
+async function systemHealthReportError(systemHealthBody, client, monitorSettingsService, distributor, errorCode, type, innerMessage, generalErrorMessage = ""){
     let headers = {
         "X-Pepperi-OwnerID" : client.AddonUUID,
         "X-Pepperi-SecretKey" : client.AddonSecretKey
     }
 
-    const alertBody = {
-        DistributorID: distributor.InternalID,
-        AlertCode: errorCode
-    };
-
-    //get Message
-    const alertLogicResponse = await monitorSettingsService.papiClient.post('/var/addons/health_monitor/alerts', alertBody);
-    
     let body = {
-        Name: "Sync failed",
+        Name: "Sync",
         Description: type,
-        Status: "Error",
-        Message: errors[alertLogicResponse.AlertCode]["Message"]
+        Status: systemHealthBody.Status,
+        Message: systemHealthBody.Message 
     }
 
     const Url: string = `system_Health/notifications`;
