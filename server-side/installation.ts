@@ -248,6 +248,7 @@ exports.upgrade = async (client: Client, request: Request) => {
     try {
         let addon = await monitorSettingsService.papiClient.addons.installedAddons.addonUUID(client.AddonUUID).get();
         const version = addon?.Version?.split('.').map(item => { return Number(item) }) || [];
+        
         if (Semver.lte(request.body.FromVersion, '2.0.51')) {
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
             let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
@@ -293,22 +294,23 @@ exports.upgrade = async (client: Client, request: Request) => {
 
         // Upgrade to a version with new monitor-level default
         if (Semver.lte(request.body.FromVersion, '2.0.19')) {
-            const currentMemoryUsageLimit = (await monitorSettingsService.getMonitorSettings()).MemoryUsageLimit
-            const currentMonitorLevel = (await monitorSettingsService.getMonitorSettings()).MonitorLevel
+            const settings = await monitorSettingsService.getMonitorSettings()
+
+            const currentMemoryUsageLimit = settings.MemoryUsageLimit
+            const currentMonitorLevel = settings.MonitorLevel
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
-            let data = {}
 
             // On update invalidate all old values of monitor value, so all dist will default to a valid value.
             if (currentMonitorLevel !== undefined && Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel)) {
-                data["MonitorLevel"] = currentMonitorLevel
+                settings["MonitorLevel"] = currentMonitorLevel
             } else {
-                data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
+                settings["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
             }
             
-            data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit
+            settings["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
-                Data: data
+                Data: settings
             };
             await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL)
             console.log('HealthMonitor upgraded to new Monitor-Level.');
@@ -539,13 +541,13 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
         
-        const interval = DEFAULT_MONITOR_LEVEL
+        const interval = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
         retVal["codeJobUUID"] = codeJob.UUID;
-        retVal["interval"] = interval;
+        retVal["interval"] = DEFAULT_MONITOR_LEVEL;
     }
     catch (error) {
         const errorMessage = Utils.GetErrorDetailsSafe(error);
