@@ -1259,11 +1259,11 @@ async function systemHealthReportError(systemHealthBody, client, monitorSettings
     let body = {
         Name: "Sync",
         Description: type,
-        Status: systemHealthBody.Status,
+        Status: systemHealthBody.Status.toUpperCase(),
         Message: systemHealthBody.Message 
     }
 
-    const Url: string = `system_Health/notifications`;
+    const Url: string = `/system_Health/notifications`;
     //api call to system health instead of reporting directly
     const res = await monitorSettingsService.papiClient.post(Url, body, headers);
 
