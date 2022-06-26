@@ -59,7 +59,7 @@ export class SyncTest {
     
         //filter audit log data to return only sync objects from the last update time, 
         //for objects which have 3 retries or ‘Status=failure’ - run an internal sync
-        let error = `(Status.ID=1 or (AuditInfo.JobMessageData.NumberOfTry>=3 and Status.ID=4))`
+        let error = `(Status.ID=0 or (AuditInfo.JobMessageData.NumberOfTry>=3 and Status.ID=4))`
         let auditLogResult = await this.getAuditLog(monitorSettingsService , error, lastUpdate)
         monitorSettings['SyncFailed']['LastUpdate'] = currentUpdate;
     
