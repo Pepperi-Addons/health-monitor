@@ -29,6 +29,8 @@
     },
     "dependencies": {
         "@pepperi-addons/debug-server": "0.0.32",
+        "@pepperi-addons/ngx-composite-lib": "0.0.16-beta.23",
+        "@pepperi-addons/ngx-lib": "^0.3.15-beta.29",
         "@pepperi-addons/papi-sdk": "^1.30.0",
         "@types/node-fetch": "^2.5.7",
         "aws-sdk": "^2.908.0",
