@@ -111,6 +111,8 @@ exports.install = async (client: Client, request: Request) => {
         data[retValJobLimitReached["codeJobName"]] = retValJobLimitReached["codeJobUUID"];
         data[retValJobExecutionFailed["codeJobName"]] = retValJobExecutionFailed["codeJobUUID"];
         data[retValDailyAddonUsage["codeJobName"]] = retValDailyAddonUsage["codeJobUUID"];
+        data['SyncFailed']['LastUpdate'] = 0;
+
         //data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
 
         const settingsBodyADAL = {
