@@ -1251,25 +1251,25 @@ async function StatusUpdate(systemHealthBody, client, monitorSettingsService, la
 }
 
 async function systemHealthReportError(systemHealthBody, client, monitorSettingsService, distributor, errorCode, type, innerMessage, generalErrorMessage = ""){
-    let headers = {
-        "X-Pepperi-OwnerID" : client.AddonUUID,
-        "X-Pepperi-SecretKey" : client.AddonSecretKey
+    if(systemHealthBody.Status != "" && systemHealthBody.Message != ""){
+        let headers = {
+            "X-Pepperi-OwnerID" : client.AddonUUID,
+            "X-Pepperi-SecretKey" : client.AddonSecretKey
+        }
+    
+        let body = {
+            Name: "Sync",
+            Description: type,
+            Status: systemHealthBody.Status.toUpperCase(),
+            Message: systemHealthBody.Message 
+        }
+        const Url: string = `/system_Health/notifications`;
+        //api call to system health instead of reporting directly
+        const res = await monitorSettingsService.papiClient.post(Url, body, headers);
     }
-
-    let body = {
-        Name: "Sync",
-        Description: type,
-        Status: systemHealthBody.Status.toUpperCase(),
-        Message: systemHealthBody.Message 
-    }
-
-    const Url: string = `/system_Health/notifications`;
-    //api call to system health instead of reporting directly
-    const res = await monitorSettingsService.papiClient.post(Url, body, headers);
-
-    //construct error message
-    const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
-    return errorMessage;
+     //construct error message
+     const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
+     return errorMessage;
 }
 
 async function UpdateCodeJobCronExpression(papiClient, codeJob, updatedCronExpression) {

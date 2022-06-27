@@ -14,7 +14,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@pepperi-addons/ngx-composite-lib": "0.0.16-beta.23",
     "@pepperi-addons/papi-sdk": "^1.25.13",
     "@pepperi-addons/scripts": "^2.0.4",
     "@types/node-fetch": "^2.5.10",
