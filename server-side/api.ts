@@ -37,7 +37,7 @@ const KEY_FOR_TOKEN = 'NagiosToken'
 
 //#region health monitor api
 //mechanism to check for sync failure - run an internal sync and update relevant webhooks 
-export async function sync_failed_modified(client: Client, request: Request) {
+export async function sync_failed(client: Client, request: Request) {
     const syncTest = new SyncTest();
     console.log('HealthMonitorAddon start SyncFailed test');
     const monitorSettingsService = new MonitorSettingsService(client);
@@ -467,7 +467,7 @@ export async function run_now(client: Client, request: Request) {
     switch (request.body.Type) {
         case "SYNC-FAILED":
             request.body.RunNow = true;
-            result = await sync_failed_modified(client, request);
+            result = await sync_failed(client, request);
             if (result.success) {
                 message = "Sync is successful";
             }

@@ -42,7 +42,6 @@ exports.install = async (client: Client, request: Request) => {
             "X-Pepperi-OwnerID": client.AddonUUID,
             "X-Pepperi-SecretKey": client.AddonSecretKey
         };
-
         const responseSettingsTable1 = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL1, headersADAL1);
 
         // install SyncFailed test
@@ -263,6 +262,22 @@ exports.upgrade = async (client: Client, request: Request) => {
             await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
         }
 
+        if (Semver.lte(request.body.FromVersion, '2.0.76')) {
+            console.log(`About to post code job again with a different scheduling`);
+            const distributor = await GetDistributor(monitorSettingsService.papiClient);
+            let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
+            let monitorLevelData = VALID_MONITOR_LEVEL_VALUES[monitorSettings['Data']['MonitorLevel']];
+            let syncCodeJob = monitorSettings['Data']['SyncFailedCodeJobUUID'];
+
+            const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({
+                UUID: syncCodeJob,
+                CodeJobName: "SyncFailed Test",
+                CronExpression: GetMonitorCronExpression(monitorLevelData)
+            });
+
+            console.log("Successfully updated code job.");
+        }
+
         // upgrade to 2.0 or 1.0 versions
         if (version.length == 3 && version[0] < 2) {
             const additionalData = addon.AdditionalData ? addon.AdditionalData : "";
@@ -456,38 +471,44 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
     Type: "data"
 }
 
-export function GetMonitorCronExpression(token, maintenanceWindowHour, interval) {
-    // rand is integet between 0-4 included.
-    const rand = (jwtDecode(token)['pepperi.distributorid']) % interval;
-    const minute = rand + "-59/" + interval;
-    let hour = '';
-
-    // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
-    switch (maintenanceWindowHour) {
-        case 0:
-            hour = "2-22";
-            break;
-        case 1:
-            hour = "3-23";
-            break;
-        case 2:
-            hour = "0,4-23";
-            break;
-        case 21:
-            hour = "0-19,23";
-            break;
-        case 22:
-            hour = "0-20";
-            break;
-        case 23:
-            hour = "1-21";
-            break;
-        default:
-            hour = "0-" + (maintenanceWindowHour - 2) + ',' + (maintenanceWindowHour + 2) + "-23";
-    }
-
-    return minute + " " + hour + " * * *";
+//sync test run evry 15 minutes
+export function GetMonitorCronExpression(monitorLevel) {
+    const cronExpression = `*/${monitorLevel} * * * *`;
+    return cronExpression;
 }
+
+// export function GetMonitorCronExpression(token, maintenanceWindowHour, interval) {
+//     // rand is integet between 0-4 included.
+//     const rand = (jwtDecode(token)['pepperi.distributorid']) % interval;
+//     const minute = rand + "-59/" + interval;
+//     let hour = '';
+
+//     // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
+//     switch (maintenanceWindowHour) {
+//         case 0:
+//             hour = "2-22";
+//             break;
+//         case 1:
+//             hour = "3-23";
+//             break;
+//         case 2:
+//             hour = "0,4-23";
+//             break;
+//         case 21:
+//             hour = "0-19,23";
+//             break;
+//         case 22:
+//             hour = "0-20";
+//             break;
+//         case 23:
+//             hour = "1-21";
+//             break;
+//         default:
+//             hour = "0-" + (maintenanceWindowHour - 2) + ',' + (maintenanceWindowHour + 2) + "-23";
+//     }
+
+//     return minute + " " + hour + " * * *";
+// }
 
 function GetAddonLimitCronExpression(token) {
     // rand is integet between 0-4 included.
@@ -544,7 +565,7 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
         
         const interval = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
-        let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, interval));
+        let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(DEFAULT_MONITOR_LEVEL));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
