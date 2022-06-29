@@ -475,9 +475,11 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
 
 //sync test run evry 15 minutes
 export function GetMonitorCronExpression(monitorLevel, maintenanceWindowHour, token) {
-    const rand = (jwtDecode(token)['pepperi.distributorid']) % 59;
-    const minute = rand + "/" + monitorLevel;
-    let hour = '';
+    //rand is integer between 0-4 included.	
+    const rand = (jwtDecode(token)['pepperi.distributorid']) % monitorLevel;	
+    const minute = rand + "-59/" + monitorLevel;	
+    let hour = '';	
+
 
     // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
     switch (maintenanceWindowHour) {
