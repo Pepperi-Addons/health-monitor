@@ -1265,7 +1265,9 @@ async function systemHealthReportError(systemHealthBody, client, monitorSettings
         }
         const Url: string = `/system_Health/notifications`;
         //api call to system health instead of reporting directly
+        console.log("callling system health notifications with body:" + body)
         const res = await monitorSettingsService.papiClient.post(Url, body, headers);
+        console.log("Succeed call system health notifications")
     }
      //construct error message
      const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
