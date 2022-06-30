@@ -475,7 +475,7 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
 
 //sync test run evry 15 minutes
 export function GetMonitorCronExpression(monitorLevel, maintenanceWindowHour, token) {
-    //rand is integer between 0-4 included.	
+    //in case monitor level is 5 (high) - rand is integer between 0-4 included, in case monitor level is 15 (low) - rand is between 0-14.	
     const rand = (jwtDecode(token)['pepperi.distributorid']) % monitorLevel;	
     const minute = rand + "-59/" + monitorLevel;	
     let hour = '';	
