@@ -155,7 +155,7 @@ export class VarRelationService {
     async update_cron_expression(monitorSettingsService: MonitorSettingsService, monitorLevelValue: number) {
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
-        const cronExpression = GetMonitorCronExpression(monitorSettingsService.clientData.OAuthAccessToken, maintenanceWindowHour, monitorLevelValue)
+        const cronExpression = GetMonitorCronExpression(monitorLevelValue, maintenanceWindowHour, monitorSettingsService.clientData.OAuthAccessToken)
 
         const monitorSettings = await monitorSettingsService.getMonitorSettings()
         const codeJob = await monitorSettingsService.papiClient.codeJobs.upsert({
