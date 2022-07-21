@@ -9,7 +9,7 @@ import jwtDecode from "jwt-decode";
 import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 import { DEFAULT_MONITOR_LEVEL } from './installation';
-import { SyncTest } from './sync_test .service';
+import { SyncTest } from './sync_test.service';
 
 const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -1259,7 +1259,7 @@ async function systemHealthReportError(systemHealthBody, client, monitorSettings
     
         let body = {
             Name: "Sync",
-            Description: type,
+            Description: "Sync status",
             Status: systemHealthBody.Status.toUpperCase(),
             Message: systemHealthBody.Message 
         }
