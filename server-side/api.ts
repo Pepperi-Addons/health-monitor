@@ -75,6 +75,8 @@ export async function sync_failed(client: Client, request: Request) {
     }
     finally {
         clearTimeout(timeout);
+
+        
     }
 
     return {
