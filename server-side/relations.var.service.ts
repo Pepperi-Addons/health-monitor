@@ -58,7 +58,7 @@ const SystemHealthFields: any[] = [
                 Vertical: 'Stretch'
             }
         },
-        OptionalValues: [{ Key: "Never", Value: "None" }, { Key: "Low", Value: "Low: Every 15 min" }, { Key: "High", Value: "High: Every 5 min + pro active" }]
+        OptionalValues: [{ Key: "Never", Value: "Never" }, { Key: "Low", Value: "Low: Every 15 min" }, { Key: "High", Value: "High: Every 5 min + pro active" }]
     }
 ]
 
