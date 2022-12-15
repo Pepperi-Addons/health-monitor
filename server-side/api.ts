@@ -905,7 +905,7 @@ async function ReportError(monitorSettingsService: MonitorSettingsService, distr
     ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
     // report error to Nagios
-    await ReportErrorToNagios(monitorSettingsService.papiClient, distributor.InternalID, errorCode, generalErrorMessage)
+    //await ReportErrorToNagios(monitorSettingsService.papiClient, distributor.InternalID, errorCode, generalErrorMessage)
 
     return errorMessage;
 }
@@ -1098,7 +1098,7 @@ async function ReportErrorWebhook(monitorSettingsService, errorCode, type, inner
     }
 }
 
-export async function ReportErrorToNagios(papiClient: PapiClient, distributorID: string, service: string, message: string) {
+async function ReportErrorToNagios(papiClient: PapiClient, distributorID: string, service: string, message: string) {
     let token = ''
     try {
         token = (await papiClient.get(`/kms/parameters/${KEY_FOR_TOKEN}`)).Value
