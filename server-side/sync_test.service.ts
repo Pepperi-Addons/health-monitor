@@ -35,7 +35,7 @@ export class SyncTest {
     }
     
     async auditLogIsEmpty(client, monitorSettingsService, systemHealthBody, monitorSettings, syncParams){
-        if(monitorSettings['MonitorLevel'] === 'High'){
+        if(monitorSettings['MonitorLevel'] === 5){
             syncParams['errorCode'] = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
             this.updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
         }
@@ -43,7 +43,7 @@ export class SyncTest {
     
     async checkForAuditSuccess(monitorSettingsService){
         let currentDate = new Date();
-        let dateUpdate = (new Date(currentDate.getTime() - VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]*60000)).toISOString(); //taking "monitor level" minutes back 
+        let dateUpdate = (new Date(currentDate.getTime() - DEFAULT_MONITOR_LEVEL*60000)).toISOString(); //taking "monitor level" minutes back 
         let success = "Status.ID=1"
         //filter success sync objects from audit log
         let auditLogResult = await this.getAuditLog(monitorSettingsService ,success, dateUpdate)

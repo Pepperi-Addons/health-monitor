@@ -17,7 +17,7 @@ import Semver from "semver";
 import UsageRelationService from "./relations.usage.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
-export const DEFAULT_MONITOR_LEVEL = "Low" // Every 15 min
+export const DEFAULT_MONITOR_LEVEL = 15 // "Low"- Every 15 min
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -101,7 +101,7 @@ exports.install = async (client: Client, request: Request) => {
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] =DEFAULT_MONITOR_LEVEL
+        data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
         data["MemoryUsageLimit"] = DEFAULT_MEMORY_USAGE
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -266,7 +266,8 @@ exports.upgrade = async (client: Client, request: Request) => {
             console.log(`About to post code job again with a different scheduling`);
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
             let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
-            let monitorLevelData = VALID_MONITOR_LEVEL_VALUES[monitorSettings['Data']['MonitorLevel']];
+            let currentMonitorLevel = monitorSettings['Data']['MonitorLevel'];
+            let monitorLevelData = Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel) ? currentMonitorLevel : DEFAULT_MONITOR_LEVEL;
             let syncCodeJob = monitorSettings['Data']['SyncFailedCodeJobUUID'];
             const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
             const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
@@ -475,36 +476,37 @@ export const PepperiUsageMonitorTable: AddonDataScheme = {
 
 //sync test run evry 15 minutes
 export function GetMonitorCronExpression(monitorLevel, maintenanceWindowHour, token) {
-    //in case monitor level is 5 (high) - rand is integer between 0-4 included, in case monitor level is 15 (low) - rand is between 0-14.	
-    const rand = (jwtDecode(token)['pepperi.distributorid']) % monitorLevel;	
-    const minute = rand + "-59/" + monitorLevel;	
-    let hour = '';	
-
-
-    // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
-    switch (maintenanceWindowHour) {
-        case 0:
-            hour = "2-22";
-            break;
-        case 1:
-            hour = "3-23";
-            break;
-        case 2:
-            hour = "0,4-23";
-            break;
-        case 21:
-            hour = "0-19,23";
-            break;
-        case 22:
-            hour = "0-20";
-            break;
-        case 23:
-            hour = "1-21";
-            break;
-        default:
-            hour = "0-" + (maintenanceWindowHour - 2) + ',' + (maintenanceWindowHour + 2) + "-23";
+    //in case monitor level is 5 (high) - rand is integer between 0-4 included, in case monitor level is 15 (low) - rand is between 0-14.
+    let cronExpression =  "";
+    if(monitorLevel !== 0){ // in case monitor level is "Never", cron expression is empty
+        const rand = (jwtDecode(token)['pepperi.distributorid']) % monitorLevel;	
+        const minute = rand + "-59/" + monitorLevel;	
+        let hour = '';	
+        // monitor will be disabled from 3 hours, starting one hour before maintenance window and finished one hour after
+        switch (maintenanceWindowHour) {
+            case 0:
+                hour = "2-22";
+                break;
+            case 1:
+                hour = "3-23";
+                break;
+            case 2:
+                hour = "0,4-23";
+                break;
+            case 21:
+                hour = "0-19,23";
+                break;
+            case 22:
+                hour = "0-20";
+                break;
+            case 23:
+                hour = "1-21";
+                break;
+            default:
+                hour = "0-" + (maintenanceWindowHour - 2) + ',' + (maintenanceWindowHour + 2) + "-23";
+        }
+        cronExpression =  minute + " " + hour + " * * *";
     }
-    let cronExpression =  minute + " " + hour + " * * *";
     return cronExpression;
 }
 
@@ -562,7 +564,7 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
         
-        const interval = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
+        const interval = DEFAULT_MONITOR_LEVEL
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(interval, maintenanceWindowHour, monitorSettingsService.clientData.OAuthAccessToken));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
