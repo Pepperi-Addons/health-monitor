@@ -43,7 +43,7 @@ export class SyncTest {
     
     async checkForAuditSuccess(monitorSettingsService){
         let currentDate = new Date();
-        let dateUpdate = (new Date(currentDate.getTime() - DEFAULT_MONITOR_LEVEL*60000)).toISOString(); //taking "monitor level" minutes back 
+        let dateUpdate = (new Date(currentDate.getTime() - VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]*60000)).toISOString(); //taking "monitor level" minutes back 
         let success = "Status.ID=1"
         //filter success sync objects from audit log
         let auditLogResult = await this.getAuditLog(monitorSettingsService ,success, dateUpdate)

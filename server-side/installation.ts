@@ -17,7 +17,7 @@ import Semver from "semver";
 import UsageRelationService from "./relations.usage.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
-export const DEFAULT_MONITOR_LEVEL = 15 // "Low"- Every 15 min
+export const DEFAULT_MONITOR_LEVEL = "High" // Every 5 min
 
 exports.install = async (client: Client, request: Request) => {
     try {
@@ -101,7 +101,7 @@ exports.install = async (client: Client, request: Request) => {
 
         data["Name"] = distributor.Name;
         data["MachineAndPort"] = distributor.MachineAndPort;
-        data["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
+        data["MonitorLevel"] = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
         data["MemoryUsageLimit"] = DEFAULT_MEMORY_USAGE
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
         data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
@@ -267,7 +267,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
             let monitorSettings = await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').get(distributor.InternalID.toString());
             let currentMonitorLevel = monitorSettings['Data']['MonitorLevel'];
-            let monitorLevelData = Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel) ? currentMonitorLevel : DEFAULT_MONITOR_LEVEL;
+            let monitorLevelData = Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel) ? currentMonitorLevel : VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL];
             let syncCodeJob = monitorSettings['Data']['SyncFailedCodeJobUUID'];
             const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
             const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
@@ -301,7 +301,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             const responseSettingsTable = await monitorSettingsService.papiClient.post('/addons/data/schemes', bodyADAL, headersADAL);
             const distributor = await GetDistributor(monitorSettingsService.papiClient);
 
-            data["MonitorLevel"] = (currentMonitorLevel === undefined) ? DEFAULT_MONITOR_LEVEL : currentMonitorLevel;
+            data["MonitorLevel"] = (currentMonitorLevel === undefined) ? VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL] : currentMonitorLevel;
             data["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit;
             const settingsBodyADAL = {
                 Key: distributor.InternalID.toString(),
@@ -324,7 +324,7 @@ exports.upgrade = async (client: Client, request: Request) => {
             if (currentMonitorLevel !== undefined && Object.values(VALID_MONITOR_LEVEL_VALUES).includes(currentMonitorLevel)) {
                 settings["MonitorLevel"] = currentMonitorLevel
             } else {
-                settings["MonitorLevel"] = DEFAULT_MONITOR_LEVEL
+                settings["MonitorLevel"] = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
             }
             
             settings["MemoryUsageLimit"] = (currentMemoryUsageLimit === undefined) ? DEFAULT_MEMORY_USAGE : currentMemoryUsageLimit
@@ -564,13 +564,13 @@ async function InstallSyncFailed(monitorSettingsService: MonitorSettingsService)
         const maintenance = await monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get();
         const maintenanceWindowHour = parseInt(maintenance.MaintenanceWindow.split(':')[0]);
         
-        const interval = DEFAULT_MONITOR_LEVEL
+        const interval = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
         let codeJob = await CreateAddonCodeJob(monitorSettingsService, "SyncFailed Test", "SyncFailed Test for HealthMonitor Addon.", "api", "sync_failed", GetMonitorCronExpression(interval, maintenanceWindowHour, monitorSettingsService.clientData.OAuthAccessToken));
 
         retVal["mapDataID"] = resultAddUDTRow.InternalID;
         retVal["codeJobName"] = 'SyncFailedCodeJobUUID';
         retVal["codeJobUUID"] = codeJob.UUID;
-        retVal["interval"] = DEFAULT_MONITOR_LEVEL;
+        retVal["interval"] = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL];
     }
     catch (error) {
         const errorMessage = Utils.GetErrorDetailsSafe(error);
