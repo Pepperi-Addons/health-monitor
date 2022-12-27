@@ -35,7 +35,7 @@ export class SyncTest {
     }
     
     async auditLogIsEmpty(client, monitorSettingsService, systemHealthBody, monitorSettings, syncParams){
-        if(monitorSettings['MonitorLevel'] === 'High'){
+        if(monitorSettings['MonitorLevel'] === 5){
             syncParams['errorCode'] = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
             this.updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
         }
