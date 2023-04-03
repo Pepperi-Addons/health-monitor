@@ -75,8 +75,6 @@ export async function sync_failed(client: Client, request: Request) {
     }
     finally {
         clearTimeout(timeout);
-
-        
     }
 
     return {
@@ -757,7 +755,7 @@ export async function JobLimitReachedTest(monitorSettingsService) {
         }
 
         if (!reportSent) {
-            ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), "JOB-LIMIT-SUCCESS", "JOB-LIMIT-REACHED", innerMessage);
+            await ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), "JOB-LIMIT-SUCCESS", "JOB-LIMIT-REACHED", innerMessage);
         }
 
         console.log(innerMessage);
@@ -835,7 +833,7 @@ export async function JobExecutionFailedTest(monitorSettingsService: any, relati
 
         if (reports.length == 0) {
             const reportMessage = "No new errors were found since " + intervalUTCDate + ".";
-            ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), code, type, innerMessage);
+            await ReportErrorCloudWatch(await GetDistributorCache(monitorSettingsService, monitorSettings), code, type, innerMessage);
             console.log("HealthMonitorAddon, JobExecutionFailedTest finish");
             return {
                 success: true,
@@ -899,10 +897,10 @@ async function ReportError(monitorSettingsService: MonitorSettingsService, distr
     const errorMessage = await ReportErrorCloudWatch(distributor, errorCode, type, innerMessage, generalErrorMessage);
 
     // report error to teams on System Status chanel
-    ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage, htmlTable, addonUUID, generalErrorMessage);
+    await ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage, htmlTable, addonUUID, generalErrorMessage);
 
     // report error to webhook
-    ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
+    await ReportErrorWebhook(monitorSettingsService, errorCode, type, innerMessage, generalErrorMessage);
 
     // report error to Nagios
     //await ReportErrorToNagios(monitorSettingsService.papiClient, distributor.InternalID, errorCode, generalErrorMessage)
@@ -934,7 +932,7 @@ export async function ReportErrorTeamsDriver(client: Client, request: Request) {
     const type = "SYNC-FAILED";
     const innerMessage = "Test by Meital";
 
-    ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage);
+    await ReportErrorTeams(service, environmant, distributor, errorCode, type, innerMessage);
 }
 
 async function ReportErrorTeams(monitorSettingsService, environmant, distributor, errorCode, type, innerMessage = "", htmlTable = "", addonUUID = "", generalErrorMessage = "") {
