@@ -57,7 +57,7 @@ export class SyncTest {
         return auditLogResult;
     }
     
-    //look for sync failures or sync NumberOfTry greater than 3 retries.
+    //look for sync failures or sync NumberOfTry greater than 2 retries.
     //for objects which have 3 retries or ‘Status=failure’ - run an internal sync
     async getAuditLogResult(monitorSettingsService, monitorSettings){
         let lastUpdateAudit = monitorSettings['SyncFailed']['LastUpdate'];
@@ -66,7 +66,7 @@ export class SyncTest {
         let lastUpdate = lastUpdateAudit ? lastUpdateAudit : (new Date(currentDate.getTime() - minutesToMinus * 60000)).toISOString(); //for first insertion to the table- check 30 minutes back
         let currentUpdate = (new Date()).toISOString();
     
-        let error = `(Status.ID=0 or (AuditInfo.JobMessageData.NumberOfTry>=3 and Status.ID=4))`
+        let error = `(Status.ID=0 or (AuditInfo.JobMessageData.NumberOfTry>=2 and Status.ID=4))`
         let auditLogResult = await this.getAuditLog(monitorSettingsService , error, lastUpdate)
         monitorSettings['SyncFailed']['LastUpdate'] = currentUpdate;
     
