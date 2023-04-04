@@ -3,11 +3,12 @@ import { DEFAULT_MONITOR_LEVEL } from "./installation";
 import { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 
 const syncUUID = '00000000-0000-0000-0000-000000abcdef';
+const pageSize = 1;
  
 export class SyncTest {
 
     async syncMonitoring(client, monitorSettingsService, monitorSettings, systemHealthBody){
-        let syncParams = {
+        let syncParams = { // default parameters
             errorCode: 'SUCCESS',
             succeeded : true
         }
@@ -20,7 +21,7 @@ export class SyncTest {
         } else{
             //Else – If there were sync errors - perform an internal sync test
             syncParams.errorCode = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
-            this.updateErrorParams(systemHealthBody, syncParams);
+            this.updateErrorParams(systemHealthBody, syncParams, errorAuditLogResult[0]);
         }
         syncParams.succeeded = syncParams.errorCode === 'SUCCESS' ? true : false;
         return syncParams;
@@ -76,18 +77,19 @@ export class SyncTest {
     
     // get audit log results
     async getAuditLog(monitorSettingsService , status, lastUpdate){
-        let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and ${status} and CreationDateTime>='${lastUpdate}'&fields=Status,AuditInfo`;
+        // takes only the first audit log result (no need to get all results)
+        let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and ${status} and CreationDateTime>='${lastUpdate}'&fields=UUID,Status,AuditInfo&page_size=${pageSize}`;
         let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
         return auditLogResult;
     }
     
-    updateErrorParams(systemHealthBody, syncParams){
+    updateErrorParams(systemHealthBody, syncParams, auditLogErrorObject){
         let internalSyncResponse = syncParams.errorCode;
         //If internal sync succeeded
         if (internalSyncResponse == 'SUCCESS') {
-            this.updateSystemHealthBody(systemHealthBody, 'Warning', "Sync succeeded but previously failed for some users");
+            this.updateSystemHealthBody(systemHealthBody, 'Warning', `Sync succeeded but previously failed for some users. ExecutionUUID for example : ${auditLogErrorObject.UUID}`);
         } else{
-            this.updateSystemHealthBody(systemHealthBody, 'Error', "Sync failed");
+            this.updateSystemHealthBody(systemHealthBody, 'Error', `Sync failed. ExecutionUUID for example : ${auditLogErrorObject.UUID}`);
         }
     }
     
