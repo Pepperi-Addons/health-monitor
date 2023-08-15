@@ -1261,7 +1261,8 @@ async function systemHealthReportError(systemHealthBody, client, monitorSettings
             Name: "Sync",
             Description: "Sync status",
             Status: systemHealthBody.Status.toUpperCase(),
-            Message: systemHealthBody.Message 
+            Message: systemHealthBody.Message,
+            BroadcastChannel: ['System']
         }
         const Url: string = `/system_Health/notifications`;
         //api call to system health instead of reporting directly

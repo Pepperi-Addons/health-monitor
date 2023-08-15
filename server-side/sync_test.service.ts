@@ -32,19 +32,29 @@ export class SyncTest {
         let successAuditLogResult = await this.checkForAuditSuccess(monitorSettingsService);
         if(successAuditLogResult.length != 0){
             //If there is at least one success sync
+            console.log(`no sync failures were found, monitored body status is success`);
             this.updateSystemHealthBody(systemHealthBody, 'Success', "Sync succeeded");
         } else{
-            this.auditLogIsEmpty(client, monitorSettingsService, systemHealthBody, monitorSettings, syncParams);
+            await this.auditLogIsEmpty(client, monitorSettingsService, systemHealthBody, monitorSettings, syncParams);
         }
     }
     
     // if there was no success sync operation since the last test and MonitorLevel is high - perform internal sync test. else- do nothing
     async auditLogIsEmpty(client, monitorSettingsService, systemHealthBody, monitorSettings, syncParams){
+        console.log(`monitor level: ${monitorSettings['MonitorLevel']}`);
+
         if(monitorSettings['MonitorLevel'] === 5){
+            console.log('audit log is empty and monitor level is high- performing internal sync test');
             syncParams.errorCode = await InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings);
+            console.log('audit log is empty and monitor level is high- finished sync test');
+
             const status = syncParams.errorCode === 'SUCCESS' ? 'Success' : 'Error';
+            console.log(`internal sync test- ${status}`);
+
             // update sync monitoring object according to internal sync response
             this.updateSystemHealthBody(systemHealthBody, status, syncParams.errorCode);
+        } else{
+            console.log('audit log is empty and monitor level is not high- no internal sync test was made');
         }
     }
     
@@ -53,6 +63,7 @@ export class SyncTest {
         let currentDate = new Date();
         let dateUpdate = (new Date(currentDate.getTime() - VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL] * 60000)).toISOString(); //taking "monitor level" minutes back 
         let success = "Status.ID=1"
+        console.log(`searching for sync success`);
         let auditLogResult = await this.getAuditLog(monitorSettingsService ,success, dateUpdate)
         return auditLogResult;
     }
@@ -79,7 +90,11 @@ export class SyncTest {
     async getAuditLog(monitorSettingsService , status, lastUpdate){
         // takes only the first audit log result (no need to get all results)
         let auditLogUrl = `/audit_logs?where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and ${status} and CreationDateTime>='${lastUpdate}'&fields=UUID,Status,AuditInfo&page_size=${pageSize}`;
+        
+        console.log('about to get audit log for sync failure');
         let auditLogResult = await monitorSettingsService.papiClient.get(`${auditLogUrl}`);
+        console.log('successfully got audit log');
+
         return auditLogResult;
     }
     
@@ -87,8 +102,10 @@ export class SyncTest {
         let internalSyncResponse = syncParams.errorCode;
         //If internal sync succeeded
         if (internalSyncResponse == 'SUCCESS') {
+            console.log(`there was sync error, but a successful internal sync`);
             this.updateSystemHealthBody(systemHealthBody, 'Warning', `Sync succeeded but previously failed for some users. ExecutionUUID for example : ${auditLogErrorObject.UUID}`);
         } else{
+            console.log(`there was sync error, and internal sync error`);
             this.updateSystemHealthBody(systemHealthBody, 'Error', `Sync failed. ExecutionUUID for example : ${auditLogErrorObject.UUID}`);
         }
     }
