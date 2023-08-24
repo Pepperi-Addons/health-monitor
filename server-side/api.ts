@@ -475,14 +475,14 @@ export async function run_now(client: Client, request: Request) {
                 message = "Sync failed";
             }
             break;
-        case "JOB-LIMIT-REACHED":
-            result = await job_limit_reached(client, request);
-            message = "Job usage is " + result.jobUsage + "%."
-            break;
-        case "JOB-EXECUTION-FAILED":
-            result = await job_execution_failed(client, request);
-            message = result.resultObject;
-            break;
+        // case "JOB-LIMIT-REACHED":
+        //     result = await job_limit_reached(client, request);
+        //     message = "Job usage is " + result.jobUsage + "%."
+        //     break;
+        // case "JOB-EXECUTION-FAILED":
+        //     result = await job_execution_failed(client, request);
+        //     message = result.resultObject;
+        //     break;
         default:
             message = "This run now test type does not exist.";
     }
