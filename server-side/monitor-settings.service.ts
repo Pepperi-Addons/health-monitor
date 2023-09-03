@@ -26,7 +26,10 @@ class MonitorSettingsService {
     async getMonitorSettings() {
         const distributorID = jwtDecode(this.clientData.OAuthAccessToken)['pepperi.distributorid'].toString();
         const addonUUID = this.clientData.addonUUID;
+        console.log(`About to get monitor settings table items.`);
         const monitorSettings = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').key(distributorID).get();
+        console.log(`Successfully got monitor settings table items.`);
+
         return monitorSettings.Data;
     }
 
@@ -37,8 +40,16 @@ class MonitorSettingsService {
             Key: distributorID,
             Data: data
         };
-        const settingsResponse = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
-        return settingsResponse.Data;
+        try{
+            console.log(`About to update monitor settings table.`);
+            const settingsResponse = await this.papiClient.addons.data.uuid(addonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL);
+            console.log(`Successfully updated monitor settings table.`);
+    
+            return settingsResponse.Data;
+        } catch(err) {
+            console.error(`Could not upsert item to settings table, error: ${err}`);
+        }
+        
     }
 }
 
