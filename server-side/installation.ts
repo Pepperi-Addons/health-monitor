@@ -54,35 +54,35 @@ exports.install = async (client: Client, request: Request) => {
         }
         console.log('SyncFailed codejob installed succeeded.');
 
-        // install JobLimitReached test
-        let retValJobLimitReached = await InstallJobLimitReached(monitorSettingsService);
-        successJobLimitReached = retValJobLimitReached.success;
-        errorMessage = "JobLimitReached Test installation failed on: " + retValJobLimitReached.errorMessage;
-        if (!successJobLimitReached) {
-            console.error(errorMessage);
-            return retValJobLimitReached;
-        }
-        console.log('JobLimitReached codejob installed succeeded.');
+        // // install JobLimitReached test
+        // let retValJobLimitReached = await InstallJobLimitReached(monitorSettingsService);
+        // successJobLimitReached = retValJobLimitReached.success;
+        // errorMessage = "JobLimitReached Test installation failed on: " + retValJobLimitReached.errorMessage;
+        // if (!successJobLimitReached) {
+        //     console.error(errorMessage);
+        //     return retValJobLimitReached;
+        // }
+        // console.log('JobLimitReached codejob installed succeeded.');
 
-        // install JobExecutionFailed test
-        let retValJobExecutionFailed = await InstallJobExecutionFailed(monitorSettingsService);
-        successJobExecutionFailed = retValJobExecutionFailed.success;
-        errorMessage = "JobExecutionFailed Test installation failed on: " + retValJobExecutionFailed.errorMessage;
-        if (!successJobExecutionFailed) {
-            console.error(errorMessage);
-            return retValJobExecutionFailed;
-        }
-        console.log('JobExecutionFailed codejob installed succeeded.');
+        // // install JobExecutionFailed test
+        // let retValJobExecutionFailed = await InstallJobExecutionFailed(monitorSettingsService);
+        // successJobExecutionFailed = retValJobExecutionFailed.success;
+        // errorMessage = "JobExecutionFailed Test installation failed on: " + retValJobExecutionFailed.errorMessage;
+        // if (!successJobExecutionFailed) {
+        //     console.error(errorMessage);
+        //     return retValJobExecutionFailed;
+        // }
+        // console.log('JobExecutionFailed codejob installed succeeded.');
 
-        // install DailyAddonUsage codejob
-        let retValDailyAddonUsage = await InstallDailyAddonUsage(monitorSettingsService);
-        successDailyAddonUsage = retValDailyAddonUsage.success;
-        errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
-        if (!successDailyAddonUsage) {
-            console.error(errorMessage);
-            return retValDailyAddonUsage;
-        }
-        console.log('DailyAddonUsage codejob installed succeeded.');
+        // // install DailyAddonUsage codejob
+        // let retValDailyAddonUsage = await InstallDailyAddonUsage(monitorSettingsService);
+        // successDailyAddonUsage = retValDailyAddonUsage.success;
+        // errorMessage = "DailyAddonUsage codejob installation failed on: " + retValDailyAddonUsage.errorMessage;
+        // if (!successDailyAddonUsage) {
+        //     console.error(errorMessage);
+        //     return retValDailyAddonUsage;
+        // }
+        // console.log('DailyAddonUsage codejob installed succeeded.');
 
         // from 2.1 addon settings on ADAL
         const bodyADAL: AddonDataScheme = {
@@ -104,12 +104,12 @@ exports.install = async (client: Client, request: Request) => {
         data["MonitorLevel"] = VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL]
         data["MemoryUsageLimit"] = DEFAULT_MEMORY_USAGE
         data["SyncFailed"] = { Type: "Sync failed", Status: true, ErrorCounter: 0, MapDataID: retValSyncFailed["mapDataID"], Email: "", Webhook: "", Interval: parseInt(retValSyncFailed["interval"]) * 60 * 1000 };
-        data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
-        data["JobExecutionFailed"] = { Type: "Job execution failed", Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
+        // data["JobLimitReached"] = { Type: "Job limit reached", LastPercantage: 0, Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
+        // data["JobExecutionFailed"] = { Type: "Job execution failed", Email: "", Webhook: "", Interval: 24 * 60 * 60 * 1000 };
         data[retValSyncFailed["codeJobName"]] = retValSyncFailed["codeJobUUID"];
-        data[retValJobLimitReached["codeJobName"]] = retValJobLimitReached["codeJobUUID"];
-        data[retValJobExecutionFailed["codeJobName"]] = retValJobExecutionFailed["codeJobUUID"];
-        data[retValDailyAddonUsage["codeJobName"]] = retValDailyAddonUsage["codeJobUUID"];
+        // data[retValJobLimitReached["codeJobName"]] = retValJobLimitReached["codeJobUUID"];
+        // data[retValJobExecutionFailed["codeJobName"]] = retValJobExecutionFailed["codeJobUUID"];
+        // data[retValDailyAddonUsage["codeJobName"]] = retValDailyAddonUsage["codeJobUUID"];
         data['SyncFailed']['LastUpdate'] = 0;
 
         //data[retValUsageMonitor["codeJobName"]] = retValUsageMonitor["codeJobUUID"];
@@ -131,7 +131,7 @@ exports.install = async (client: Client, request: Request) => {
         };
     }
     catch (error) {
-        const errorMessage = Utils.GetErrorDetailsSafe(error, 'message', 'Cannot install HealthMonitorAddon. Unknown Error Occured');
+        const errorMessage = Utils.GetErrorDetailsSafe(error, 'message', 'Cannot install HealthMonitorAddon. Unknown Error Occurred');
 
         return {
             success: false,
@@ -159,41 +159,41 @@ exports.uninstall = async (client: Client, request: Request) => {
         }
         console.log('SyncFailed codejob unschedule succeeded.');
 
-        // unschedule JobLimitReached test
-        let jobLimitReachedCodeJobUUID = monitorSettings.JobLimitReachedCodeJobUUID
-        if (jobLimitReachedCodeJobUUID != null && jobLimitReachedCodeJobUUID != '') {
-            await monitorSettingsService.papiClient.codeJobs.upsert({
-                UUID: jobLimitReachedCodeJobUUID,
-                CodeJobName: "JobLimitReached Test",
-                IsScheduled: false,
-                CodeJobIsHidden: true
-            });
-        }
-        console.log('JobLimitReached codejob unschedule succeeded.');
+        // // unschedule JobLimitReached test
+        // let jobLimitReachedCodeJobUUID = monitorSettings.JobLimitReachedCodeJobUUID
+        // if (jobLimitReachedCodeJobUUID != null && jobLimitReachedCodeJobUUID != '') {
+        //     await monitorSettingsService.papiClient.codeJobs.upsert({
+        //         UUID: jobLimitReachedCodeJobUUID,
+        //         CodeJobName: "JobLimitReached Test",
+        //         IsScheduled: false,
+        //         CodeJobIsHidden: true
+        //     });
+        // }
+        // console.log('JobLimitReached codejob unschedule succeeded.');
 
-        // unschedule JobExecutionFailed test
-        let jobExecutionFailedCodeJobUUID = monitorSettings.JobExecutionFailedCodeJobUUID;
-        if (jobExecutionFailedCodeJobUUID != null && jobExecutionFailedCodeJobUUID != '') {
-            await monitorSettingsService.papiClient.codeJobs.upsert({
-                UUID: jobExecutionFailedCodeJobUUID,
-                CodeJobName: "JobExecutionFailed Test",
-                IsScheduled: false,
-                CodeJobIsHidden: true
-            });
-        }
-        console.log('JobExecutionFailed codejob unschedule succeeded.');
+        // // unschedule JobExecutionFailed test
+        // let jobExecutionFailedCodeJobUUID = monitorSettings.JobExecutionFailedCodeJobUUID;
+        // if (jobExecutionFailedCodeJobUUID != null && jobExecutionFailedCodeJobUUID != '') {
+        //     await monitorSettingsService.papiClient.codeJobs.upsert({
+        //         UUID: jobExecutionFailedCodeJobUUID,
+        //         CodeJobName: "JobExecutionFailed Test",
+        //         IsScheduled: false,
+        //         CodeJobIsHidden: true
+        //     });
+        // }
+        // console.log('JobExecutionFailed codejob unschedule succeeded.');
 
-        // unschedule DailyAddonUsage
-        let dailyAddonUsageCodeJobUUID = monitorSettings.DailyAddonUsageCodeJobUUID;
-        if (dailyAddonUsageCodeJobUUID != null && dailyAddonUsageCodeJobUUID != '') {
-            await monitorSettingsService.papiClient.codeJobs.upsert({
-                UUID: dailyAddonUsageCodeJobUUID,
-                CodeJobName: "DailyAddonUsage",
-                IsScheduled: false,
-                CodeJobIsHidden: true
-            });
-        }
-        console.log('DailyAddonUsage codejob unschedule succeeded.');
+        // // unschedule DailyAddonUsage
+        // let dailyAddonUsageCodeJobUUID = monitorSettings.DailyAddonUsageCodeJobUUID;
+        // if (dailyAddonUsageCodeJobUUID != null && dailyAddonUsageCodeJobUUID != '') {
+        //     await monitorSettingsService.papiClient.codeJobs.upsert({
+        //         UUID: dailyAddonUsageCodeJobUUID,
+        //         CodeJobName: "DailyAddonUsage",
+        //         IsScheduled: false,
+        //         CodeJobIsHidden: true
+        //     });
+        // }
+        // console.log('DailyAddonUsage codejob unschedule succeeded.');
 
         /* // unschedule UsageMonitor
         let UsageMonitorCodeJobUUID = monitorSettings.UsageMonitorCodeJobUUID;
