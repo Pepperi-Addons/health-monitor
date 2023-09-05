@@ -11,10 +11,6 @@ import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInsta
 import { DEFAULT_MONITOR_LEVEL } from './installation';
 import { SyncTest } from './sync_test.service';
 
-const sleep = (milliseconds) => {
-    return new Promise(resolve => setTimeout(resolve, milliseconds));
-};
-
 const errors = {
     "SUCCESS": { "Message": 'SyncFailed test succeeded', "Color": "00FF00" },
     "JOB-EXECUTION-REPORT": { "Message": 'JobExecutionFailed test finished', "Color": "990000" },
@@ -489,140 +485,6 @@ export async function usage_callback(client: Client, request: Request) {
 //#endregion
 
 //#region health monitor tests
-export async function InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings) {
-    let udtResponse;
-    let syncResponse;
-    let statusResponse;
-    let object;
-    let timeout;
-    let start;
-    let end;
-
-    const addonData = await monitorSettingsService.getMonitorSettings();
-    let mapDataID = addonData.SyncFailed.MapDataID;
-
-    //first udt
-    try {
-        console.log('HealthMonitorAddon, SyncFailedTest start first GET udt');
-        timeout = setTimeout(async function () {
-            //return 'TIMEOUT-GET-UDT';
-            await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
-        }, 30000);
-        start = Date.now();
-        udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
-        end = Date.now();
-        clearTimeout(timeout);
-        console.log('HealthMonitorAddon, SyncFailedTest finish first GET udt took ' + (end - start) + ' milliseconds',);
-    }
-    catch (error) {
-        return 'GET-UDT-FAILED';
-    }
-    finally {
-        clearTimeout(timeout);
-    }
-
-    //update values field
-    const count = (parseInt(udtResponse.Values[0]) + 1).toString();
-    udtResponse.Values[0] = count;
-
-    const LocalData = {
-        "jsonBody": {
-            "122": {
-                "Headers": [
-                    "WrntyID",
-                    "MapDataExternalID",
-                    "Values"
-                ],
-                "Lines": [
-                    [
-                        udtResponse.InternalID,
-                        udtResponse.MapDataExternalID,
-                        udtResponse.Values
-                    ]
-                ]
-            }
-        }
-    };
-    //do sync
-    const body = {
-        "LocalDataUpdates": LocalData,
-        "LastSyncDateTime": 93737011100000,
-        "DeviceExternalID": "QASyncTest",
-        "CPIVersion": "16.50",
-        "TimeZoneDiff": 0,
-        "Locale": "",
-        "BrandedAppID": "",
-        "UserFullName": "",
-        "SoftwareVersion": "",
-        "SourceType": "10",
-        "DeviceModel": "",
-        "DeviceName": "",
-        "DeviceScreenSize": "",
-        "SystemName": "QA-PC",
-        "ClientDBUUID": Math.floor(Math.random() * 1000000000).toString()
-    };
-
-    //sync
-    try {
-        console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
-        timeout = setTimeout(async function () {
-            //return 'TIMEOUT-SYNC';
-            await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
-        }, 120000);
-        start = Date.now();
-        syncResponse = await monitorSettingsService.papiClient.post('/application/sync', body);
-
-        const syncJobUUID = syncResponse.SyncJobUUID;
-        //check if the values field have been updated
-        statusResponse = await monitorSettingsService.papiClient.get('/application/sync/jobinfo/' + syncJobUUID);
-        while (statusResponse.Status == 'SyncStart' || statusResponse.Status == 'New' || statusResponse.Status == 'PutInProgress' || statusResponse.Status == 'GetInProgress') {
-            await sleep(2000);
-            statusResponse = await monitorSettingsService.papiClient.get('/application/sync/jobinfo/' + syncJobUUID);
-        }
-        end = Date.now();
-        clearTimeout(timeout);
-        console.log('HealthMonitorAddon, SyncFailedTest finish POST sync took ' + (end - start) + ' milliseconds');
-    }
-    catch (error) {
-        return 'SYNC-CALL-FAILED';
-    }
-    finally {
-        clearTimeout(timeout);
-    }
-
-    if (statusResponse.Status == 'Done') {
-        //second udt
-        try {
-            console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
-            timeout = setTimeout(async function () {
-                //return 'TIMEOUT-GET-UDT';
-                await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
-            }, 30000);
-            start = Date.now();
-            udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
-            end = Date.now();
-            clearTimeout(timeout);
-            console.log('HealthMonitorAddon, SyncFailedTest finish second GET udt took ' + (end - start) + ' milliseconds');
-        }
-        catch (error) {
-            return 'GET-UDT-FAILED';
-        }
-        finally {
-            clearTimeout(timeout);
-        }
-
-        if (udtResponse.Values[0] == count) {
-            return 'SUCCESS';
-        }
-        else {
-            return 'SYNC-UPDATE-FAILED';
-        }
-    }
-    else {
-        return 'SYNC-FAILED';
-    }
-};
-
 export async function AddonLimitReachedTest(monitorSettingsService) {
     console.log("HealthMonitorAddon, AddonLimitReachedTest start check addons execution limit");
     try {
@@ -1164,7 +1026,7 @@ async function UpdateMonitorSettingsSyncFailed(monitorSettingsService: MonitorSe
     const settingsResponse = await monitorSettingsService.setMonitorSettings(monitorSettings);
 }
 
-async function StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
+export async function StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, success, errorCode, innerMessage = "", monitorSettings = {}) {
     let errorMessage = '';
     let distributor;
     const statusChanged = lastStatus ? !success : success; // xor (true, false) -> true
