@@ -40,9 +40,9 @@ export class SyncTest {
     // call proactive sync and update system health parameters accordingly
     private async callProactiveSync() {
         console.log(`About to perform a proactive sync`);
-        this.errorCode = await this.InternalSyncTest(this.systemHealthBody, this.client, this.monitorSettingsService, this.monitorSettings);
+        this.errorCode = await this.InternalSyncTest(this.client, this.monitorSettingsService, this.monitorSettings);
         const status = this.errorCode === 'SUCCESS' ? 'Success' : 'Error';
-        console.log(`internal sync test result- ${status}, about to update system health status`);
+        console.log(`internal sync test result- ${this.errorCode}, about to update system health status`);
 
         // update sync monitoring object according to internal sync response
         this.updateSystemHealthBody(status, this.errorCode);
@@ -127,7 +127,7 @@ export class SyncTest {
     }
 
     // proactive sync
-    private async InternalSyncTest(systemHealthBody, client, monitorSettingsService, monitorSettings) {
+    private async InternalSyncTest(client, monitorSettingsService, monitorSettings) {
         let udtResponse;
         let syncResponse;
         let statusResponse;
@@ -142,9 +142,10 @@ export class SyncTest {
         //first udt
         try {
             console.log('HealthMonitorAddon, SyncFailedTest start first GET udt');
-            timeout = setTimeout(async function () {
+            timeout = setTimeout(async  () => {
                 //return 'TIMEOUT-GET-UDT';
-                await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+                this.updateSystemHealthBody('Error', errors['TIMEOUT-GET-UDT']["Message"]);
+                await StatusUpdate(this.systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
             }, 30000);
             start = Date.now();
             udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
@@ -203,9 +204,10 @@ export class SyncTest {
         //sync
         try {
             console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
-            timeout = setTimeout(async function () {
+            timeout = setTimeout(async  () => {
                 //return 'TIMEOUT-SYNC';
-                await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
+                this.updateSystemHealthBody('Error', errors['TIMEOUT-SYNC']["Message"]);
+                await StatusUpdate(this.systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
             }, 120000);
             start = Date.now();
             syncResponse = await monitorSettingsService.papiClient.post('/application/sync', body);
@@ -232,9 +234,10 @@ export class SyncTest {
             //second udt
             try {
                 console.log('HealthMonitorAddon, SyncFailedTest start second GET udt');
-                timeout = setTimeout(async function () {
+                timeout = setTimeout(async  () => {
                     //return 'TIMEOUT-GET-UDT';
-                    await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
+                    this.updateSystemHealthBody('Error', errors['TIMEOUT-GET-UDT']["Message"]);
+                    await StatusUpdate(this.systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-GET-UDT', '', monitorSettings);
                 }, 30000);
                 start = Date.now();
                 udtResponse = await monitorSettingsService.papiClient.get('/user_defined_tables/' + mapDataID);
