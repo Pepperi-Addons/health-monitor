@@ -2,7 +2,6 @@ import { PapiClient, InstalledAddon, Relation } from '@pepperi-addons/papi-sdk'
 import { Client, Request } from '@pepperi-addons/debug-server'
 import MonitorSettingsService from './monitor-settings.service';
 import { GetMonitorCronExpression } from './installation';
-import { IPepGenericFormDataView } from '@pepperi-addons/ngx-composite-lib/generic-form';
 
 //monitor object every x minutes
 export enum VALID_MONITOR_LEVEL_VALUES {
@@ -65,7 +64,7 @@ const SystemHealthFields: any[] = [
 ]
 
 
-const healthMonitorDataView: IPepGenericFormDataView = {
+const healthMonitorDataView: any = {
     UID: 'ABCD-DCBA-FGHD-POLK',
     Type: 'Form',
     Hidden: false,
