@@ -10,6 +10,7 @@ import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 import { DEFAULT_MONITOR_LEVEL } from './installation';
 import { SyncTest } from './sync_test.service';
+import { errors } from './entities';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
 
@@ -41,15 +42,18 @@ export async function sync_failed(client: Client, request: Request) {
 
     try{
         const syncTest = new SyncTest(client, monitorSettingsService, monitorSettings, systemHealthBody);
-
         lastStatus = monitorSettings['SyncFailed'] ? monitorSettings['SyncFailed'].Status : false;
         syncParams = await syncTest.syncMonitor();
         errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, lastStatus, syncTest.succeeded, syncTest.errorCode, '', monitorSettings);
     }
     catch (error) {
-        clearTimeout(timeout);
         syncParams.succeeded = false;
         const innerError = Utils.GetErrorDetailsSafe(error, 'stack')
+        // When there is an error, need to update the SystemHealthBody so that the right status will be published to the system health notifications
+        systemHealthBody = {
+            Status: 'UNKNOWN-ERROR',
+            Message: innerError
+        }
         errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, syncParams.succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
     }
     finally {

@@ -1,13 +1,13 @@
-const syncUUID = '00000000-0000-0000-0000-000000abcdef';
+export const syncUUID = '00000000-0000-0000-0000-000000abcdef';
 
-const syncPageSize = 1;
+export const syncPageSize = 1;
 
-type SystemHealthBody= {
+export type SystemHealthBody= {
     Status: string;
     Message: string;
 }
 
-const errors = {
+export const errors = {
     "SUCCESS": { "Message": 'SyncFailed test succeeded', "Color": "00FF00" },
     "JOB-EXECUTION-REPORT": { "Message": 'JobExecutionFailed test finished', "Color": "990000" },
     "JOB-LIMIT-SUCCESS": { "Message": 'JobLimitReached test finished', "Color": "00FF00" },

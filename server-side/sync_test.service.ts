@@ -4,6 +4,7 @@ import { StatusUpdate } from "./api";
 import { DEFAULT_MONITOR_LEVEL } from "./installation";
 import { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 import monitorSettingsService from "./monitor-settings.service";
+import { SystemHealthBody, errors, syncPageSize, syncUUID } from "./entities";
 
 const sleep = (milliseconds: number) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
