@@ -141,6 +141,14 @@ exports.install = async (client: Client, request: Request) => {
 };
 
 exports.uninstall = async (client: Client, request: Request) => {
+    // all the cleanups are done by other addons
+    // ADAL/scheduler/relations
+    return {
+        success: true,
+        errorMessage: '',
+        resultObject: {}
+    };
+
     try {
         const monitorSettingsService = new MonitorSettingsService(client);
         const monitorSettings = await monitorSettingsService.getMonitorSettings();
