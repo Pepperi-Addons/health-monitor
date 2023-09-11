@@ -1,6 +1,6 @@
 {
   "AddonUUID": "7e15d4cc-55a7-4128-a9fe-0e877ba90069",
-  "AddonVersion": "2.1.35",
+  "AddonVersion": "2.1.39",
   "DebugPort": 4500,
   "WebappBaseUrl": "https://app.sandbox.pepperi.com",
   "DefaultEditor": "main",
@@ -32,7 +32,7 @@
       "adal": "1.0.100",
       "logs": "0.0.95",
       "system_health": "1.1.80",
-      "scheduler": "0.5.1"
+      "scheduler": "0.5.2"
     }
   }
 }
