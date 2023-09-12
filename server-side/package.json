@@ -33,6 +33,6 @@
         "@types/node-fetch": "^2.5.7",
         "aws-sdk": "^2.908.0",
         "parallel-each": "^1.1.7",
-        "semver": "^7.3.8"
+        "semver": "^7.3.7"
     }
 }
