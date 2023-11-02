@@ -1042,7 +1042,7 @@ async function systemHealthReportError(systemHealthBody, client: Client, monitor
             Description: "Sync status",
             Status: systemHealthBody.Status.toUpperCase(),
             Message: systemHealthBody.Message,
-            BroadcastChannel: ['System']
+            BroadcastChannel: ['System', 'Tenant']
         }
 
         try{
