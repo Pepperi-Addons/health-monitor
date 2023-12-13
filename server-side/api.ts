@@ -194,7 +194,8 @@ export async function health_monitor_type_alert_save(client: Client, request: Re
         const papiClient = new PapiClient({
             baseURL: client.BaseURL,
             token: client.OAuthAccessToken,
-            addonUUID: client.AddonUUID
+            addonUUID: client.AddonUUID,
+            addonSecretKey: client.AddonSecretKey
         });
 
         const monitorSettingsService = new MonitorSettingsService(client);
