@@ -51,7 +51,7 @@ export async function sync_failed(client: Client, request: Request) {
         const innerError = Utils.GetErrorDetailsSafe(error, 'stack')
         // When there is an error, need to update the SystemHealthBody so that the right status will be published to the system health notifications
         systemHealthBody = {
-            Status: 'UNKNOWN-ERROR',
+            Status: 'ERROR',
             Message: innerError
         }
         errorMessage = await StatusUpdate(systemHealthBody, client, monitorSettingsService, false, syncParams.succeeded, 'UNKNOWN-ERROR', innerError, monitorSettings);
