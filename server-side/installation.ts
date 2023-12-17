@@ -15,12 +15,16 @@ import MonitorSettingsService from './monitor-settings.service';
 import VarRelationService, { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 import Semver from "semver";
 import UsageRelationService from "./relations.usage.service";
+import { SettingsRelationService } from "./settings-relation.service";
 
 const DEFAULT_MEMORY_USAGE = 5000000
 export const DEFAULT_MONITOR_LEVEL = "Never"
 
 exports.install = async (client: Client, request: Request) => {
+    const service = new SettingsRelationService(client);
     try {
+        await service.upsertRelations();
+
         let success = true;
         let errorMessage = '';
         let resultObject = {};
@@ -342,6 +346,11 @@ exports.upgrade = async (client: Client, request: Request) => {
             };
             await monitorSettingsService.papiClient.addons.data.uuid(client.AddonUUID).table('HealthMonitorSettings').upsert(settingsBodyADAL)
             console.log('HealthMonitor upgraded to new Monitor-Level.');
+        }
+
+        if (Semver.lte(request.body.FromVersion, '2.2.0')) {
+            const service = new SettingsRelationService(client);
+            await service.upsertRelations();
         }
 
         const relations = [usageMonitorRelation.relation, relationVarSettingsService.relation]
