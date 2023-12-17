@@ -1,0 +1,44 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-top-area>
+        <pep-top-bar [title]="'Health_Monitor_Dashboard_Title' | translate">
+            <div header-start-content>
+            </div>
+            <div header-end-content>
+            </div>
+        </pep-top-bar>
+    </ng-container>
+
+    <ng-container pep-main-area>
+        <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
+            <mat-tab id="dashboard" label="{{ 'Health_Monitor_Dashboard_Tab1' | translate}}">
+                <div class="rows" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
+                    <div class="content row">
+                        <div class="info-chart chart-background">
+                            <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
+                            <p class="value bold" >{{dashboardData?.LastSync?.Time}} UTC </p>
+                        </div>
+        
+                        <div class="info-chart chart-background">
+                            <p class="desc color-dimmed">Pending Actions</p>
+                            <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
+                        </div>
+                    </div>
+                </div>
+            </mat-tab>
+            <mat-tab id="pendingActions" label="{{ 'Health_Monitor_Dashboard_Tab2' | translate}}">
+                <pep-generic-list
+                    [addPadding]="true"
+                    [dataSource]="listDataSource" 
+                    selectionType="none"
+                    uuidMapping="UUID"
+                    [showTopBar]="true" 
+                    [inline]="false" 
+                    noDataFoundMsg="No data">
+                </pep-generic-list>
+            </mat-tab>
+        </mat-tab-group>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>

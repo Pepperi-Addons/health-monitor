@@ -17,11 +17,6 @@
     "Editors": [
       {
         "ParentPackageName": "Health Monitor",
-        "PackageName": "health-monitor-settings",
-        "Description": "Health Monitor Settings"
-      },
-      {
-        "ParentPackageName": "Health Monitor",
         "PackageName": "health-monitor-dashboard",
         "Description": "Health Monitor Dashboard"
       }

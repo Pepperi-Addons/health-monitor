@@ -1,3 +1,5 @@
+@use '@pepperi-addons/ngx-lib/src/core/style/abstracts/variables';
+
 .rows{
     display: flex;
     flex-direction: column;
@@ -28,29 +30,21 @@
     }
 }
 
-.content{
-    margin-top: 0 !important;
-}
-
-#dailySync{
-    height: 20rem !important;
-    min-width: 40rem;
-}
-
-#syncStatus{
-    height: 20rem !important;
-    width: 14.5rem !important;
-}
-
 p{
     text-align: center;
     margin: 10px 0px;
 }
 
-.chart-background{
-    background: rgb(255, 255, 255);
-    box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.05),
-    0px 8px 16px 0px rgba(0, 0, 0, 0.04),
-    0px 12px 24px 0px rgba(0, 0, 0, 0.04);
-    border-radius: 8px;
+.mat-tab-group{
+    height: 100%;
+
+    ::ng-deep.mat-tab-body-wrapper {
+        height: 100%;
+        
+        .mat-tab-body.mat-tab-body-active {
+            .mat-tab-body-content{
+                padding: variables.$spacing-xs;  
+            }
+        }
+    }
 }
