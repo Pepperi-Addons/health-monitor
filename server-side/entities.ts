@@ -24,3 +24,5 @@ export const errors = {
     "TIMEOUT-SYNC": { "Message": 'Sync call timeout', "Color": "FF0000" },
     "TIMEOUT-SYNC-FAILED-TEST": { "Message": 'sync_failed test got timeout', "Color": "FF0000" }
 };
+
+export const SYNCS_PAGE_SIZE = 10000;

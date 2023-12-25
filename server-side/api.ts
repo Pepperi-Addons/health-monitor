@@ -11,8 +11,15 @@ import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInsta
 import { DEFAULT_MONITOR_LEVEL } from './installation';
 import { SyncTest } from './sync_test.service';
 import { errors } from './entities';
+import { InternalSyncService } from './elastic-sync-data/internal-sync.service';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
+
+export async function internal_get_internal_syncs_from_elastic(client: Client, request: Request) {
+    const elasticSyncDataService = new InternalSyncService(client);
+    const resultObject = await elasticSyncDataService.getSyncsResult();
+    return resultObject;
+}
 
 //#region health monitor api
 //mechanism to check for sync failure - run an internal sync and update relevant webhooks 
