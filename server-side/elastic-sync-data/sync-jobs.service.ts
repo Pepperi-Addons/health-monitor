@@ -25,7 +25,8 @@ export class SyncJobsService extends BaseElasticSyncService {
                 UUID: item._source.UUID,
                 Status: item._source.CreationDateTime,
                 StartDateTime: item._source.AuditInfo.JobMessageData.StartDateTime,
-                EndDateTime: item._source.AuditInfo.JobMessageData.EndDateTime,
+                NumberOfTry: item._source.AuditInfo.JobMessageData.NumberOfTry,
+                UserMail: item._source.Event.User.Email,
                 ResultStatus: jobStatus
             };
         });
