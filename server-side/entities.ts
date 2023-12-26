@@ -1,4 +1,4 @@
-export const syncUUID = '00000000-0000-0000-0000-000000abcdef';
+export const SYNC_UUID = '00000000-0000-0000-0000-000000abcdef';
 
 export const syncPageSize = 1;
 

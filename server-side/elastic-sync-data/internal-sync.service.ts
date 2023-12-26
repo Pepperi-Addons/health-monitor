@@ -3,16 +3,16 @@ import { BaseElasticSyncService } from "./base-elastic-sync.service";
 
 export class InternalSyncService extends BaseElasticSyncService {
     
-    async getSyncsResult() {
+    async getSyncsResult(search_after?: number[]) {
         const codeJobUUID = (await this.monitorSettingsService.getMonitorSettings()).SyncFailedCodeJobUUID;
         const query: string = `AuditInfo.JobMessageData.CodeJobUUID.keyword='${codeJobUUID}'`;
 
-        const requestedBody = this.getElasticBody(query, { "AuditInfo.JobMessageData.CodeJobUUID.keyword" : 'String' }, SYNCS_PAGE_SIZE);
+        const requestedBody = this.getElasticBody(query, { "AuditInfo.JobMessageData.CodeJobUUID.keyword" : 'String' }, SYNCS_PAGE_SIZE, search_after);
         const res = await this.getElasticData(requestedBody);
-        return this.handleResultObject(res);
+        return this.fixElasticResultObject(res);
     }
 
-    handleResultObject(res) {
+    fixElasticResultObject(res) {
         return res.resultObject.hits.hits.map((item) => {
             let jobStatus = 'Failed';
             if(item._source.AuditInfo.ResultObject) {

@@ -11,6 +11,8 @@ export abstract class BaseElasticSyncService {
 
     protected abstract getSyncsResult(res);
 
+    protected abstract fixElasticResultObject(res);
+
     protected async getElasticData(requestBody) {
         const elasticEndpoint = `${indexName}/_search`;
 
@@ -24,12 +26,28 @@ export abstract class BaseElasticSyncService {
         }
     }
 
-    protected getElasticBody(query: string, fieldsMap, size: number) {
+    protected getElasticBody(query: string, fieldsMap, size: number, search_after?: number[]) {
         const result = parse(query, fieldsMap);
         const kibanaQuery = toKibanaQueryJSON(result);
-        return { 
-            size: size,
-            query: kibanaQuery
-        };
+
+        return this.buildQueryParameters(kibanaQuery, size, search_after);
+    }
+
+    buildQueryParameters(kibanaQuery, size: number, search_after?: number[]) {
+        const body = {
+            query: kibanaQuery,
+            sort: [
+                {
+                  "AuditInfo.JobMessageData.StartDateTime": {
+                    "order": "desc"
+                  }
+                }
+            ],
+            size: size
+        }
+        if(search_after) {
+            body['search_after'] = search_after;
+        }
+        return body;
     }
 }
