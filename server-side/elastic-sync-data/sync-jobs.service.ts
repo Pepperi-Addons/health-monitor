@@ -12,36 +12,27 @@ export class SyncJobsService extends BaseElasticSyncService {
     }
 
     fixElasticResultObject(res) {
-        return res.resultObject.hits.hits.map((item) => {
-            let jobStatus = item._source.Name;
-            if(item._source.ID === 1) { // Success
-                if(item._source.AuditInfo.ResultObject) {
-                    const status = JSON.parse(item._source.AuditInfo.ResultObject);
-                    jobStatus = status.errorMessage ? 'Failed' : 'Success';
-                }
-            }
-            
+        return res.resultObject.hits.hits.map((item) => {            
             return {
                 UUID: item._source.UUID,
-                Status: item._source.CreationDateTime,
+                Status: item._source.Name === 'InRetry' ? 'InProgress' : item._source.AuditInfo.JobMessageData.Status,
                 StartDateTime: item._source.AuditInfo.JobMessageData.StartDateTime,
                 NumberOfTry: item._source.AuditInfo.JobMessageData.NumberOfTry,
-                UserMail: item._source.Event.User.Email,
-                ResultStatus: jobStatus
+                UserMail: item._source.Event.User.Email
             };
         });
     }
 
-    async getMaintenanceWindowHours() {
+    private async getMaintenanceWindowHours() {
         try {
             const maintenanceWindow = (await this.monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get()).MaintenanceWindow;
-            return (maintenanceWindow.split(':')).map((item) => {return parseInt(item)});
+            return (maintenanceWindow.split(':')).map((item) => { return parseInt(item)} );
         } catch(err) {
             console.log(`error getting maintenance window: ${err}`);
         }
     }
 
-    createQueryTerm(field: string, value: string) {
+    private createQueryTerm(field: string, value: string) {
         return {
             term: {
                 [field]: value
@@ -50,7 +41,7 @@ export class SyncJobsService extends BaseElasticSyncService {
     }
 
 
-    getSyncBody(maintenanceWindow: number[], distributorUUID: string, search_after?: number[]) {
+    private getSyncBody(maintenanceWindow: number[], distributorUUID: string, search_after?: number[]) {
         const query =  {
                 bool: {
                     must: [
@@ -59,7 +50,7 @@ export class SyncJobsService extends BaseElasticSyncService {
                         this.createQueryTerm("AuditInfo.JobMessageData.FunctionName.keyword", SYNC_FUNCTION_NAME), // need to filter on function name, or else we will also get the internal syncs
                         {
                             script: {
-                                script: {
+                                script: { // excluding maintenance window hours
                                     source: `
                                         def targetHour = doc['CreationDateTime'].value.hourOfDay;
                                         def targetMinute = doc['CreationDateTime'].value.minuteOfHour;

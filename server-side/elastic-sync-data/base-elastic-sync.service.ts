@@ -33,7 +33,7 @@ export abstract class BaseElasticSyncService {
         return this.buildQueryParameters(kibanaQuery, size, search_after);
     }
 
-    buildQueryParameters(kibanaQuery, size: number, search_after?: number[]) {
+    protected buildQueryParameters(kibanaQuery, size: number, search_after?: number[]) {
         const body = {
             query: kibanaQuery,
             sort: [
