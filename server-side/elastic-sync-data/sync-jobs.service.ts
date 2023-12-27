@@ -1,4 +1,4 @@
-import { SYNCS_PAGE_SIZE, SYNC_UUID } from "../entities";
+import { SYNCS_PAGE_SIZE, SYNC_FUNCTION_NAME, SYNC_UUID } from "../entities";
 import { BaseElasticSyncService } from "./base-elastic-sync.service";
 import jwtDecode from "jwt-decode";
 
@@ -54,8 +54,9 @@ export class SyncJobsService extends BaseElasticSyncService {
         const query =  {
                 bool: {
                     must: [
-                        this.createQueryTerm("AuditInfo.JobMessageData.CodeJobUUID.keyword", SYNC_UUID),
+                        this.createQueryTerm("AuditInfo.JobMessageData.AddonData.AddonUUID.keyword", SYNC_UUID),
                         this.createQueryTerm("DistributorUUID", distributorUUID),
+                        this.createQueryTerm("AuditInfo.JobMessageData.FunctionName.keyword", SYNC_FUNCTION_NAME), // need to filter on function name, or else we will also get the internal syncs
                         {
                             script: {
                                 script: {

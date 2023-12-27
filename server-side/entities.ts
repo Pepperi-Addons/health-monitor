@@ -26,3 +26,5 @@ export const errors = {
 };
 
 export const SYNCS_PAGE_SIZE = 10000;
+
+export const SYNC_FUNCTION_NAME = "sync";
