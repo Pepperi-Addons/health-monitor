@@ -4,10 +4,10 @@ import jwtDecode from "jwt-decode";
 
 export class SyncJobsService extends BaseElasticSyncService {
     
-    async getSyncsResult(search_after?: number[]) {
+    async getSyncsResult() {
         const maintenanceWindow = await this.getMaintenanceWindowHours();
         const distributorUUID = jwtDecode(this.monitorSettingsService.clientData.OAuthAccessToken)['pepperi.distributoruuid'];
-        const res = await this.getElasticData(this.getSyncBody(maintenanceWindow, distributorUUID, search_after));
+        const res = await this.getElasticData(this.getSyncBody(maintenanceWindow, distributorUUID));
         return this.fixElasticResultObject(res);
     }
 
@@ -41,7 +41,7 @@ export class SyncJobsService extends BaseElasticSyncService {
     }
 
 
-    private getSyncBody(maintenanceWindow: number[], distributorUUID: string, search_after?: number[]) {
+    private getSyncBody(maintenanceWindow: number[], distributorUUID: string) {
         const query =  {
                 bool: {
                     must: [
@@ -68,6 +68,6 @@ export class SyncJobsService extends BaseElasticSyncService {
                 }
             
         }
-        return this.buildQueryParameters(query, SYNCS_PAGE_SIZE, search_after);
+        return this.buildQueryParameters(query, SYNCS_PAGE_SIZE);
     }
 }

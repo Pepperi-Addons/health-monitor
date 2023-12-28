@@ -17,13 +17,13 @@ import { SyncJobsService } from './elastic-sync-data/sync-jobs.service';
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 export async function internal_get_internal_syncs_from_elastic(client: Client, request: Request) {
-    const elasticSyncDataService = new InternalSyncService(client);
+    const elasticSyncDataService = new InternalSyncService(client, request.body.SearchAfter);
     const resultObject = await elasticSyncDataService.getSyncsResult();
     return resultObject;
 }
 
 export async function get_syncs_from_elastic(client: Client, request: Request) {
-    const syncJobsService = new SyncJobsService(client);
+    const syncJobsService = new SyncJobsService(client, request.body.SearchAfter);
     const resultObject = await syncJobsService.getSyncsResult();
     return resultObject;
 }

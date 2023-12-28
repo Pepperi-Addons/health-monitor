@@ -3,11 +3,11 @@ import { BaseElasticSyncService } from "./base-elastic-sync.service";
 
 export class InternalSyncService extends BaseElasticSyncService {
     
-    async getSyncsResult(search_after?: number[]) {
+    async getSyncsResult() {
         const codeJobUUID = (await this.monitorSettingsService.getMonitorSettings()).SyncFailedCodeJobUUID;
         const query: string = `AuditInfo.JobMessageData.CodeJobUUID.keyword='${codeJobUUID}'`;
 
-        const requestedBody = this.getElasticBody(query, { "AuditInfo.JobMessageData.CodeJobUUID.keyword" : 'String' }, SYNCS_PAGE_SIZE, search_after);
+        const requestedBody = this.getElasticBody(query, { "AuditInfo.JobMessageData.CodeJobUUID.keyword" : 'String' }, SYNCS_PAGE_SIZE);
         const res = await this.getElasticData(requestedBody);
         return this.fixElasticResultObject(res);
     }
