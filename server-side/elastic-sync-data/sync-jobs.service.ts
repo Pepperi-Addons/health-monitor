@@ -15,7 +15,7 @@ export class SyncJobsService extends BaseElasticSyncService {
         return res.resultObject.hits.hits.map((item) => {            
             return {
                 UUID: item._source.UUID,
-                Status: item._source.Name === 'InRetry' ? 'InProgress' : item._source.AuditInfo.JobMessageData.Status,
+                Status: item._source.Name === ('InRetry' || 'InProgress') ? 'In Progress' : item._source.AuditInfo.JobMessageData.Status,
                 StartDateTime: item._source.AuditInfo.JobMessageData.StartDateTime,
                 NumberOfTry: item._source.AuditInfo.JobMessageData.NumberOfTry,
                 UserMail: item._source.Event.User.Email
