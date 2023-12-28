@@ -1,4 +1,4 @@
-export const syncUUID = '00000000-0000-0000-0000-000000abcdef';
+export const SYNC_UUID = '00000000-0000-0000-0000-000000abcdef';
 
 export const syncPageSize = 1;
 
@@ -26,3 +26,8 @@ export const errors = {
 };
 
 export const SYNCS_PAGE_SIZE = 10000;
+
+export const SYNC_FUNCTION_NAME = "sync";
+
+export const AUDIT_LOG_INDEX = 'audit_log';
+

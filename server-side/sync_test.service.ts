@@ -4,7 +4,7 @@ import { StatusUpdate } from "./api";
 import { DEFAULT_MONITOR_LEVEL } from "./installation";
 import { VALID_MONITOR_LEVEL_VALUES } from "./relations.var.service";
 import monitorSettingsService from "./monitor-settings.service";
-import { SystemHealthBody, errors, syncPageSize, syncUUID } from "./entities";
+import { SystemHealthBody, errors, syncPageSize, SYNC_UUID } from "./entities";
 
 const sleep = (milliseconds: number) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -73,7 +73,7 @@ export class SyncTest {
     // check in audit log any sync was made in the given interval
     private async checkForSync() {
         const dateUpdate = (new Date((new Date()).getTime() - VALID_MONITOR_LEVEL_VALUES[DEFAULT_MONITOR_LEVEL] * 60000)).toISOString(); //taking "monitor level" minutes back 
-        const auditLogUrl = `where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and CreationDateTime>='${dateUpdate}'&fields=UUID,Status,AuditInfo&page_size=${syncPageSize}`;
+        const auditLogUrl = `where=AuditInfo.JobMessageData.AddonData.AddonUUID='${SYNC_UUID}' and CreationDateTime>='${dateUpdate}'&fields=UUID,Status,AuditInfo&page_size=${syncPageSize}`;
 
         console.log(`searching for any sync in the given interval`);
         let auditLogResult = await this.getAuditLog(auditLogUrl);
@@ -96,7 +96,7 @@ export class SyncTest {
         const currentUpdate = (new Date()).toISOString();
         const error = `(Status.ID=0 or (AuditInfo.JobMessageData.NumberOfTry>2))`;
         // takes only the first audit log result (no need to get all results)
-        const auditLogUrl = `where=AuditInfo.JobMessageData.AddonData.AddonUUID='${syncUUID}' and ${error} and CreationDateTime>='${lastUpdate}'&fields=UUID,Status,AuditInfo&page_size=${syncPageSize}`;
+        const auditLogUrl = `where=AuditInfo.JobMessageData.AddonData.AddonUUID='${SYNC_UUID}' and ${error} and CreationDateTime>='${lastUpdate}'&fields=UUID,Status,AuditInfo&page_size=${syncPageSize}`;
 
         console.log(`About to search for sync errors`);
         const auditLogResult = await this.getAuditLog(auditLogUrl);
