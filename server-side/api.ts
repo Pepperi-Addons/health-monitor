@@ -13,10 +13,16 @@ import { SyncTest } from './sync_test.service';
 import { errors } from './entities';
 import { InternalSyncService } from './elastic-sync-data/internal-sync.service';
 import { SyncJobsService } from './elastic-sync-data/sync-jobs.service';
+import { SyncDataAggregations } from './elastic-sync-data/sync-data-aggregations.service';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
 
-export async function internal_get_internal_syncs_from_elastic(client: Client, request: Request) {
+export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
+    const elasticSyncDataService = new SyncDataAggregations(client, request.body.SearchAfter);
+    const resultObject = await elasticSyncDataService.getSyncsResult();
+    return resultObject;
+}
+export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
     const elasticSyncDataService = new InternalSyncService(client, request.body.SearchAfter);
     const resultObject = await elasticSyncDataService.getSyncsResult();
     return resultObject;
