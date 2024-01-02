@@ -12,7 +12,7 @@ export abstract class BaseElasticSyncService {
         this.search_after = search_after;
     }
 
-    protected abstract getSyncsResult(res);
+    protected abstract getSyncsResult();
 
     protected abstract fixElasticResultObject(res);
 
@@ -52,5 +52,41 @@ export abstract class BaseElasticSyncService {
             body['search_after'] = this.search_after;
         }
         return body;
+    }
+
+    protected createQueryTerm(field: string, value: string) {
+        return {
+            term: {
+                [field]: value
+            }
+        }
+    }
+
+    protected getMaintenanceWindowHoursScript(maintenanceWindow: number[]) {
+        return {
+            script: {
+                script: { // excluding maintenance window hours
+                    source: `
+                        def targetHour = doc['CreationDateTime'].value.hourOfDay;
+                        def targetMinute = doc['CreationDateTime'].value.minuteOfHour;
+                        
+                        def targetTime = targetHour * 60 + targetMinute;
+                        def startTime = ${maintenanceWindow[0]} * 60 + ${maintenanceWindow[1]};
+                        def endTime = ${maintenanceWindow[0] + 1} * 60 + ${maintenanceWindow[1]};
+                        
+                        return targetTime < startTime || targetTime > endTime;
+                    `
+                }
+            }
+        }
+    }
+
+    protected async getMaintenanceWindowHours() {
+        try {
+            const maintenanceWindow = (await this.monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get()).MaintenanceWindow;
+            return (maintenanceWindow.split(':')).map((item) => { return parseInt(item)} );
+        } catch(err) {
+            console.log(`error getting maintenance window: ${err}`);
+        }
     }
 }

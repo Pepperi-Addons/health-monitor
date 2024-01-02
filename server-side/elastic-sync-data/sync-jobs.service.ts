@@ -23,24 +23,6 @@ export class SyncJobsService extends BaseElasticSyncService {
         });
     }
 
-    private async getMaintenanceWindowHours() {
-        try {
-            const maintenanceWindow = (await this.monitorSettingsService.papiClient.metaData.flags.name('Maintenance').get()).MaintenanceWindow;
-            return (maintenanceWindow.split(':')).map((item) => { return parseInt(item)} );
-        } catch(err) {
-            console.log(`error getting maintenance window: ${err}`);
-        }
-    }
-
-    private createQueryTerm(field: string, value: string) {
-        return {
-            term: {
-                [field]: value
-            }
-        }
-    }
-
-
     private getSyncBody(maintenanceWindow: number[], distributorUUID: string) {
         const query =  {
                 bool: {
@@ -48,22 +30,7 @@ export class SyncJobsService extends BaseElasticSyncService {
                         this.createQueryTerm("AuditInfo.JobMessageData.AddonData.AddonUUID.keyword", SYNC_UUID),
                         this.createQueryTerm("DistributorUUID", distributorUUID),
                         this.createQueryTerm("AuditInfo.JobMessageData.FunctionName.keyword", SYNC_FUNCTION_NAME), // need to filter on function name, or else we will also get the internal syncs
-                        {
-                            script: {
-                                script: { // excluding maintenance window hours
-                                    source: `
-                                        def targetHour = doc['CreationDateTime'].value.hourOfDay;
-                                        def targetMinute = doc['CreationDateTime'].value.minuteOfHour;
-                                        
-                                        def targetTime = targetHour * 60 + targetMinute;
-                                        def startTime = ${maintenanceWindow[0]} * 60 + ${maintenanceWindow[1]};
-                                        def endTime = ${maintenanceWindow[0] + 1} * 60 + ${maintenanceWindow[1]};
-                                        
-                                        return targetTime < startTime || targetTime > endTime;
-                                    `
-                                }
-                            }
-                        }
+                        this.getMaintenanceWindowHoursScript(maintenanceWindow)
                     ]
                 }
             
