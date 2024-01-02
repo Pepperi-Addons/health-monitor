@@ -13,8 +13,8 @@ export class SyncDataAggregations extends BaseElasticSyncService {
         this.maintenanceWindow = maintenanceWindow;
     }
 
-    fixElasticResultObject(res) {
-        return res.resultObject.aggregations.aggregation_buckets.buckets;
+    fixElasticResultObject(res, aggregationFieldName = "aggregation_buckets") {
+        return res.resultObject.aggregations[aggregationFieldName].buckets;
     }
 
     async getSyncsResult() {
@@ -32,7 +32,8 @@ export class SyncDataAggregations extends BaseElasticSyncService {
         const hourlyDatesRange = {
             "range": {
             "AuditInfo.JobMessageData.StartDateTime": {
-                    "gte": "now-24h"
+                    "gte": "now-24h",
+                    "lt": "now"
                 }
             }
         }
@@ -63,14 +64,15 @@ export class SyncDataAggregations extends BaseElasticSyncService {
         const dailyDatesRange = {
             "range": {
                 "AuditInfo.JobMessageData.StartDateTime": {
-                    "gte": "now-24h"
+                    "gte": "now-24h",
+                    "lt": "now"
                 }
             }
         }
 
         const body = this.getSyncAggregationQuery(this.getStatusAggregationQuery(), dailyDatesRange);
         const auditLogData = await this.getElasticData(body);
-        return auditLogData.resultObject.aggregations.status_filter.buckets;
+        return this.fixElasticResultObject(auditLogData, 'status_filter');
     }
 
     // get all syncs in the last 7 days, distributed by weeks
@@ -78,7 +80,8 @@ export class SyncDataAggregations extends BaseElasticSyncService {
         const weeklyDatesRange = {
             "range": {
                 "AuditInfo.JobMessageData.StartDateTime": {
-                  "gte": "now-5w/w-1w/d"
+                  "gte": "now-5w/w-1w/d",
+                  "lt": "now"
                 }
               }
         }
@@ -110,7 +113,7 @@ export class SyncDataAggregations extends BaseElasticSyncService {
             "range": {
               "AuditInfo.JobMessageData.StartDateTime": {
                 "gte": "now/M-1M/M", 
-                "lt": "now/M"
+                "lt": "now"
               }
             }
         }
