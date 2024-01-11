@@ -14,7 +14,17 @@ export class SyncDataAggregations extends BaseElasticSyncService {
     }
 
     fixElasticResultObject(res, aggregationFieldName = "aggregation_buckets") {
-        return res.resultObject.aggregations[aggregationFieldName].buckets;
+        let jobStatus = {};
+        const fixedObject = res.resultObject.aggregations[aggregationFieldName].buckets;
+
+        if(aggregationFieldName === "status_filter") {
+            jobStatus['data'] = Object.values(fixedObject).map((item: any) => { return item.doc_count })
+        } else if(aggregationFieldName === "aggregation_buckets") {
+            jobStatus['dates'] = fixedObject.map((item) => { return item.key_as_string });
+            jobStatus['data'] = fixedObject.map((item) => { return Object.values(item.status_filter.buckets).map((element: any) => { return element.doc_count })})
+        }
+        
+        return jobStatus;
     }
 
     async getSyncsResult() {
@@ -44,6 +54,7 @@ export class SyncDataAggregations extends BaseElasticSyncService {
                     "date_histogram": {
                         "field": "AuditInfo.JobMessageData.StartDateTime",
                         "interval": "1h",
+                        "format": "HH:mm",
                         "extended_bounds": {
                             "min": "now-24h",
                             "max": "now"
@@ -93,7 +104,7 @@ export class SyncDataAggregations extends BaseElasticSyncService {
                     "field": "AuditInfo.JobMessageData.StartDateTime",
                     "calendar_interval": "1w",
                     "offset": "-1d",
-                    "format": "yyyy-MM-dd",
+                    "format": "dd-MM-yyyy",
                     "min_doc_count": 0
                     },
                     ...this.getStatusAggregationQuery()
@@ -124,7 +135,7 @@ export class SyncDataAggregations extends BaseElasticSyncService {
                     "date_histogram": {
                         "field": "AuditInfo.JobMessageData.StartDateTime",
                         "calendar_interval": "1M",
-                        "format": "yyyy-MM",
+                        "format": "MM/yyyy",
                         "min_doc_count": 0,
                         "extended_bounds": {
                             "min": "now/M-1M/M",

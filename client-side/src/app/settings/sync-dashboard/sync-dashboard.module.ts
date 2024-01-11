@@ -20,9 +20,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 
 import { PepGenericListModule } from '@pepperi-addons/ngx-composite-lib/generic-list';
 
-import { PepperiHealthMonitorDashboardComponent } from './pepperi-health-monitor-dashboard.component';
-import { SyncDashboardModule } from '../sync-dashboard/sync-dashboard.module';
-
+import { SyncDashboard } from './sync-dashboard.component';
 
 const pepIcons = [
     pepIconSystemClose,
@@ -31,17 +29,16 @@ const pepIcons = [
 export const routes: Routes = [
     {
         path: '',
-        component: PepperiHealthMonitorDashboardComponent
+        component: SyncDashboard
     }
 ];
 
 @NgModule({
     declarations: [
-        PepperiHealthMonitorDashboardComponent
+        SyncDashboard
     ],
     imports: [
         CommonModule,
-        SyncDashboardModule,
         HttpClientModule,
         PepNgxLibModule,
         PepSizeDetectorModule,
@@ -57,9 +54,9 @@ export const routes: Routes = [
         TranslateModule.forChild(),
         RouterModule.forChild(routes)
     ],
-    exports:[PepperiHealthMonitorDashboardComponent]
+    exports:[SyncDashboard]
 })
-export class PepperiHealthMonitorDashboardModule {
+export class SyncDashboardModule {
     constructor(
         private pepIconRegistry: PepIconRegistry,
     ) {

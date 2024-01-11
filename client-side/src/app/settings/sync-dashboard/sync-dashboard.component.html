@@ -1,0 +1,48 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-top-area>
+        <pep-top-bar [title]="'Health_Monitor_Dashboard_Title' | translate">
+            <div header-start-content>
+            </div>
+            <div header-end-content>
+            </div>
+        </pep-top-bar>
+    </ng-container>
+
+    <ng-container pep-main-area>
+        <div class="rows" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
+            <div class="content row">
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
+                    <p class="value bold" >{{dashboardData?.LastSync?.Time}} UTC </p>
+                </div>
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Pending Actions</p>
+                    <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
+                </div>
+            </div>
+            <div class="content row">
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Number of syncs made in the last 24 hours</p>
+                    <canvas #hourlySync id="hourlySync"></canvas>
+                </div>
+            </div>
+            <div class="content row">
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Last 24h Sync status</p>
+                    <canvas #dailySync id="dailySync"></canvas>
+                </div>
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Weekly Sync Status</p>
+                    <canvas #weeklySync id="weeklySync"></canvas>
+                </div>
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Monthly Sync Status</p>
+                    <canvas #monthlySync id="monthlySync"></canvas>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>
