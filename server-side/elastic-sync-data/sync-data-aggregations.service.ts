@@ -5,12 +5,11 @@ import jwtDecode from "jwt-decode";
 export class SyncDataAggregations extends BaseElasticSyncService {
     
     distributorUUID: string;
-    maintenanceWindow: number[];
+    maintenanceWindow: number[] = [];
     
-    constructor(client, maintenanceWindow: number[]) {
+    constructor(client) {
         super(client);
         this.distributorUUID = jwtDecode(this.monitorSettingsService.clientData.OAuthAccessToken)['pepperi.distributoruuid'];
-        this.maintenanceWindow = maintenanceWindow;
     }
 
     fixElasticResultObject(res, aggregationFieldName = "aggregation_buckets") {
