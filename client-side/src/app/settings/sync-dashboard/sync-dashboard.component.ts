@@ -9,7 +9,7 @@ import { AddonService } from 'src/app/services/addon.service';
   templateUrl: './sync-dashboard.component.html',
   styleUrls: ['./sync-dashboard.component.scss']
 })
-export class SyncDashboard implements OnInit {
+export class SyncDashboardComponent implements OnInit {
   syncData;
   dashboardData;
   ctxSyncStatus: any;

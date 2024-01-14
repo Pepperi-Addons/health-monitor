@@ -20,22 +20,15 @@ import { MatTabsModule } from '@angular/material/tabs';
 
 import { PepGenericListModule } from '@pepperi-addons/ngx-composite-lib/generic-list';
 
-import { SyncDashboard } from './sync-dashboard.component';
+import { SyncDashboardComponent } from './sync-dashboard.component';
 
 const pepIcons = [
     pepIconSystemClose,
 ];
 
-export const routes: Routes = [
-    {
-        path: '',
-        component: SyncDashboard
-    }
-];
-
 @NgModule({
     declarations: [
-        SyncDashboard
+        SyncDashboardComponent
     ],
     imports: [
         CommonModule,
@@ -51,10 +44,9 @@ export const routes: Routes = [
         // PepTextboxModule,
         PepGenericListModule,
         MatTabsModule,
-        TranslateModule.forChild(),
-        RouterModule.forChild(routes)
+        TranslateModule.forChild()
     ],
-    exports:[SyncDashboard]
+    exports:[SyncDashboardComponent],
 })
 export class SyncDashboardModule {
     constructor(
