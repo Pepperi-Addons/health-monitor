@@ -13,7 +13,11 @@ export class AddonService {
         private addonService: PepAddonService
     ) {}
 
-    async initData(): Promise<AddonData> {
+    async initHealthMonitorDashaboardData(): Promise<AddonData> {
         return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `health_monitor_dashboard`).toPromise();
+    }
+
+    async initChartsData(): Promise<AddonData> {
+        return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `get_sync_aggregations_from_elastic`).toPromise();
     }
 }

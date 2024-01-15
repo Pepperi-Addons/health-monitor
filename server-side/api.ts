@@ -18,7 +18,7 @@ import { SyncDataAggregations } from './elastic-sync-data/sync-data-aggregations
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
-    const elasticSyncDataService = new SyncDataAggregations(client, request.body.SearchAfter);
+    const elasticSyncDataService = new SyncDataAggregations(client);
     const resultObject = await elasticSyncDataService.getSyncsResult();
     return resultObject;
 }
