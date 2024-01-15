@@ -9,8 +9,8 @@
     </ng-container>
 
     <ng-container pep-main-area>
-        <div class="rows" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
-            <div class="content row">
+        <div class="rows">
+            <div class="content row" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
                     <p class="value bold" >{{dashboardData?.LastSync?.Time}} UTC </p>
@@ -18,6 +18,16 @@
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Pending Actions</p>
                     <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
+                </div>
+            </div>
+            <div class="content row" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync.dates }}</p>
+                    <p class="value bold" >{{uptimeValues?.[0]}} </p>
+                </div>
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Up time this month</p>
+                    <p class="value bold">{{uptimeValues?.[1]}}</p>
                 </div>
             </div>
             <div class="content row">
