@@ -14,13 +14,18 @@ import { errors } from './entities';
 import { InternalSyncService } from './elastic-sync-data/internal-sync.service';
 import { SyncJobsService } from './elastic-sync-data/sync-jobs.service';
 import { SyncDataAggregations } from './elastic-sync-data/sync-data-aggregations.service';
+import { UptimeSync } from './elastic-sync-data/uptime-sync';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
     const elasticSyncDataService = new SyncDataAggregations(client);
-    const resultObject = await elasticSyncDataService.getSyncsResult();
-    return resultObject;
+    const uptimeSyncService = new UptimeSync(client);
+
+    const syncAggregationResult = await elasticSyncDataService.getSyncsResult();
+    const uptimeCalculationResult = await uptimeSyncService.getSyncsResult();
+
+    return {...syncAggregationResult, ...uptimeCalculationResult};
 }
 export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
     const elasticSyncDataService = new InternalSyncService(client, request.body.SearchAfter);

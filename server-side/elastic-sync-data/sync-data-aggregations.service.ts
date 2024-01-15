@@ -1,16 +1,10 @@
 import { SYNC_FUNCTION_NAME, SYNC_UUID } from "../entities";
-import { BaseElasticSyncService } from "./base-elastic-sync.service";
-import jwtDecode from "jwt-decode";
+import { BaseSyncAggregationService } from "./base-sync-aggregation.service";
 
-export class SyncDataAggregations extends BaseElasticSyncService {
+export class SyncDataAggregations extends BaseSyncAggregationService {
     
-    distributorUUID: string;
     maintenanceWindow: number[] = [];
     
-    constructor(client) {
-        super(client);
-        this.distributorUUID = jwtDecode(this.monitorSettingsService.clientData.OAuthAccessToken)['pepperi.distributoruuid'];
-    }
 
     fixElasticResultObject(res, aggregationFieldName = "aggregation_buckets") {
         let jobStatus = {};
@@ -100,11 +94,11 @@ export class SyncDataAggregations extends BaseElasticSyncService {
             "aggs": {
                 "aggregation_buckets": {
                     "date_histogram": {
-                    "field": "AuditInfo.JobMessageData.StartDateTime",
-                    "calendar_interval": "1w",
-                    "offset": "-1d",
-                    "format": "dd-MM-yyyy",
-                    "min_doc_count": 0
+                      "field": "AuditInfo.JobMessageData.StartDateTime",
+                      "calendar_interval": "1w",
+                      "offset": "-1d",
+                      "format": "dd-MM-yyyy",
+                      "min_doc_count": 0
                     },
                     ...this.getStatusAggregationQuery()
                 }
@@ -149,17 +143,21 @@ export class SyncDataAggregations extends BaseElasticSyncService {
         const body = this.getSyncAggregationQuery(aggregationQuery, monthlyDatesRange);
         
         const auditLogData = await this.getElasticData(body);
-        return this.fixElasticResultObject(auditLogData);
+        const lastMonthDates = this.getLastMonthLogsDates()
+
+        const fixedResult = this.fixElasticResultObject(auditLogData);
+        fixedResult['dates'][0] = lastMonthDates;
+        return fixedResult;
     }
 
-    private getSyncAggregationQuery(statusesAggregation, auditLogDateRange) {
+    getSyncAggregationQuery(statusesAggregation, auditLogDateRange) {
         return {
             "size": 0,
             "query": {
               "bool": {
                 "must": [
                     this.createQueryTerm("AuditInfo.JobMessageData.AddonData.AddonUUID.keyword", SYNC_UUID),
-                    this.createQueryTerm("DistributorUUID", this.distributorUUID),
+                    this.createQueryTerm("AuditInfo.JobMessageData.DistributorUUID.keyword", this.distributorUUID),
                     this.createQueryTerm("AuditInfo.JobMessageData.FunctionName.keyword", SYNC_FUNCTION_NAME),
                     this.getMaintenanceWindowHoursScript(this.maintenanceWindow),
                     auditLogDateRange
@@ -171,7 +169,7 @@ export class SyncDataAggregations extends BaseElasticSyncService {
     }
 
     // get status aggregation query, filtered by success, delayed and failure
-    private getStatusAggregationQuery() {
+    getStatusAggregationQuery() {
         return {
             "aggs": {
                 "status_filter": {
