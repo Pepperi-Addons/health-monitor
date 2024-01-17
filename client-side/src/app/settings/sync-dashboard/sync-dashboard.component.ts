@@ -1,6 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Chart, registerables } from "chart.js";
-import { IPepGenericListDataSource } from "@pepperi-addons/ngx-composite-lib/generic-list";
 import { AddonService } from 'src/app/services/addon.service';
 
 
@@ -17,6 +16,8 @@ export class SyncDashboardComponent implements OnInit {
   ctxHourlySync: any;
   ctxWeeklySync: any;
   ctxMonthlySync: any;
+
+  uptimeValues;
   
   tabID = 0;
 
@@ -44,7 +45,8 @@ export class SyncDashboardComponent implements OnInit {
     this.addonService.initChartsData().then((result: any) => {
       this.syncData = result;
       this.loadData();
-    });
+      this.uptimeValues = Object.values(this.syncData?.UptimeSync.data);
+    });  
   }
 
   loadData() {
@@ -55,15 +57,17 @@ export class SyncDashboardComponent implements OnInit {
     }
 
     Object.entries(this.syncData).forEach(([key, value]: [string, any]) => {
-      if(key === 'HourlySyncs') {
-        this.loadHourlySync();
-      } else {
-        this.ctxDailySync = this.canvasDailySync.nativeElement.getContext('2d');
+      if(key !== 'UptimeSync') {
+        if(key === 'HourlySyncs') {
+          this.loadHourlySync();
+        } else {
+          this.ctxDailySync = this.canvasDailySync.nativeElement.getContext('2d');
 
-        const syncsData = (key === 'LastDaySyncs') ? 
-        value.data.map((item) => { return [item] }) : value.data[0].map((_, colIndex) => value.data.map(row => row[colIndex]));
+          const syncsData = (key === 'LastDaySyncs') ? 
+          value.data.map((item) => { return [item] }) : value.data[0].map((_, colIndex) => value.data.map(row => row[colIndex]));
 
-        this.loadAggregatedSyncStatus(this.syncData[key].dates, ctxTable[key], syncsData);
+          this.loadAggregatedSyncStatus(this.syncData[key].dates, ctxTable[key], syncsData);
+        }
       }
     });
   }
