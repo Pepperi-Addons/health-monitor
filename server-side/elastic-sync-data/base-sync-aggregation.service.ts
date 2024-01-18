@@ -23,6 +23,5 @@ export abstract class BaseSyncAggregationService extends BaseElasticSyncService 
         const firstLogsDay = logsStartDate.getMonth() === dateMonthAgo.getMonth() ? logsStartDate.getDate() : 1;
 
         return `${firstLogsDay}-${dateMonthAgo.getDate()}/${dateMonthAgo.getMonth() + 1}`; // return dates range in dd1-dd2/mm format
-      }
-  
+      } 
 }
