@@ -31,3 +31,5 @@ export const SYNC_FUNCTION_NAME = "sync";
 
 export const AUDIT_LOG_INDEX = 'audit_log';
 
+export const AUDIT_LOGS_WEEKS_RANGE = 5;
+
