@@ -17,14 +17,12 @@ export abstract class BaseSyncAggregationService extends BaseElasticSyncService 
     // calculate dates range of previous month logs
     protected getLastMonthLogsDates() {
         const today= new Date();
-        const monthAgo = (new Date((new Date()).setMonth(today.getMonth() - 1))).getMonth();
-
-        const thisMonthFirstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const prevMonthLastDay = new Date(thisMonthFirstDay.getTime() - 1);
+        const dateMonthAgo = new Date(today.getFullYear(), today.getMonth() - 1, 0); // get the last day of previous month
         
-        const logsStartDate = new Date(today.getTime() - (AUDIT_LOGS_WEEKS_RANGE * 7 * 24 * 60 * 60 * 1000)); // AUDIT_LOGS_WEEKS_RANGE weeks ago
-        const firstLogsDay = logsStartDate.getMonth() === monthAgo ? logsStartDate.getDate() : 1;
-        return `${firstLogsDay}-${prevMonthLastDay.getDate()}/${monthAgo + 1}`;
+        const logsStartDate = new Date(today.getDate() - (AUDIT_LOGS_WEEKS_RANGE * 7)); // get AUDIT_LOGS_WEEKS_RANGE weeks ago date
+        const firstLogsDay = logsStartDate.getMonth() === dateMonthAgo.getMonth() ? logsStartDate.getDate() : 1;
+
+        return `${firstLogsDay}-${dateMonthAgo.getDate()}/${dateMonthAgo.getMonth() + 1}`; // return dates range in dd1-dd2/mm format
       }
   
 }
