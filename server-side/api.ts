@@ -28,13 +28,13 @@ export async function get_sync_aggregations_from_elastic(client: Client, request
     return {...syncAggregationResult, ...uptimeCalculationResult};
 }
 export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
-    const elasticSyncDataService = new InternalSyncService(client, request.body.SearchAfter);
+    const elasticSyncDataService = new InternalSyncService(client, request.body);
     const resultObject = await elasticSyncDataService.getSyncsResult();
     return resultObject;
 }
 
 export async function get_syncs_from_elastic(client: Client, request: Request) {
-    const syncJobsService = new SyncJobsService(client, request.body.SearchAfter);
+    const syncJobsService = new SyncJobsService(client, request.body);
     const resultObject = await syncJobsService.getSyncsResult();
     return resultObject;
 }
