@@ -13,7 +13,7 @@
             </div>
             <div class="content row" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
                 <div class="info-chart chart-background">
-                    <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync.dates }}</p>
+                    <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync?.dates }}</p>
                     <p class="value bold" >{{uptimeValues?.[0]}} </p>
                 </div>
                 <div class="info-chart chart-background">

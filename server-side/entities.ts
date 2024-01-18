@@ -25,7 +25,7 @@ export const errors = {
     "TIMEOUT-SYNC-FAILED-TEST": { "Message": 'sync_failed test got timeout', "Color": "FF0000" }
 };
 
-export const SYNCS_PAGE_SIZE = 10000;
+export const SYNCS_PAGE_SIZE = 200;
 
 export const SYNC_FUNCTION_NAME = "sync";
 

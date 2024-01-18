@@ -157,7 +157,7 @@ export class SyncDataAggregations extends BaseSyncAggregationService {
               "bool": {
                 "must": [
                     this.createQueryTerm("AuditInfo.JobMessageData.AddonData.AddonUUID.keyword", SYNC_UUID),
-                    this.createQueryTerm("AuditInfo.JobMessageData.DistributorUUID.keyword", this.distributorUUID),
+                    this.createQueryTerm("DistributorUUID.keyword", this.distributorUUID),
                     this.createQueryTerm("AuditInfo.JobMessageData.FunctionName.keyword", SYNC_FUNCTION_NAME),
                     this.getMaintenanceWindowHoursScript(this.maintenanceWindow),
                     auditLogDateRange

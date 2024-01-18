@@ -1,0 +1,20 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-main-area>
+        <pep-generic-list 
+            [addPadding]="true" 
+            [dataSource]="listDataSource" 
+            uuidMapping="UUID"
+            [showTopBar]="true" 
+            [inline]="false" 
+            [showSearch]="true" 
+            noDataFoundMsg="No data found"
+            [smartFilter]="smartFilter"
+            [supportSorting]="true"
+            [pager]="pager"  
+            tableViewType="compact">
+        </pep-generic-list>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>

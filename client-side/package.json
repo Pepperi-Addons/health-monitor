@@ -31,6 +31,7 @@
         "@pepperi-addons/data-views": "0.0.2",
         "@pepperi-addons/ngx-composite-lib": "^0.4.2-beta.33",
         "@pepperi-addons/ngx-lib": "^0.4.2-beta.138",
+        "@pepperi-addons/pepperi-filters": "^1.0.36",
         "@pepperi-addons/papi-sdk": "^1.34.0",
         "@tweenjs/tween.js": "^17.1.1",
         "@types/ws": "8.5.4",

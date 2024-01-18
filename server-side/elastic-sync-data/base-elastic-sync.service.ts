@@ -6,10 +6,10 @@ import { AUDIT_LOG_INDEX } from '../entities';
 
 export abstract class BaseElasticSyncService {
     protected monitorSettingsService = new MonitorSettingsService(this.client);
-    protected search_after: number[] = [];
+    protected params: { SearchAfter?: any[], FromIndex?: number, Where?: any };
 
-    constructor(private client: Client, search_after: number[] = []) {
-        this.search_after = search_after;
+    constructor(private client: Client, params: { SearchAfter?: any[], FromIndex?: number, Where?: any } = {}) {
+        this.params = params;
     }
 
     protected abstract getSyncsResult();
@@ -46,10 +46,14 @@ export abstract class BaseElasticSyncService {
                   }
                 }
             ],
+            track_total_hits: true, // return total number of documents, for getting all items in the list
             size: size
         }
-        if(this.search_after.length > 0) {
-            body['search_after'] = this.search_after;
+        if(this.params.SearchAfter && this.params.SearchAfter.length > 0) {
+            body['search_after'] = this.params.SearchAfter;
+        }
+        if(this.params.FromIndex) {
+            body['from'] = this.params.FromIndex;
         }
         return body;
     }
@@ -62,20 +66,25 @@ export abstract class BaseElasticSyncService {
         }
     }
 
+    // return a script checking if the creation date is not within the maintenance window hours (to exclude syncs created during maintenance window)
     protected getMaintenanceWindowHoursScript(maintenanceWindow: number[]) {
         return {
-            script: {
-                script: { // excluding maintenance window hours
-                    source: `
-                        def targetHour = doc['CreationDateTime'].value.hourOfDay;
-                        def targetMinute = doc['CreationDateTime'].value.minuteOfHour;
-                        
-                        def targetTime = targetHour * 60 + targetMinute;
-                        def startTime = ${maintenanceWindow[0]} * 60 + ${maintenanceWindow[1]};
-                        def endTime = ${maintenanceWindow[0] + 1} * 60 + ${maintenanceWindow[1]};
-                        
-                        return targetTime < startTime || targetTime > endTime;
-                    `
+            bool: {
+                must: {
+                    script: {
+                        script: { // excluding maintenance window hours
+                            source: `
+                                def targetHour = doc['CreationDateTime'].value.hourOfDay;
+                                def targetMinute = doc['CreationDateTime'].value.minuteOfHour;
+                                
+                                def targetTime = targetHour * 60 + targetMinute;
+                                def startTime = ${maintenanceWindow[0]} * 60 + ${maintenanceWindow[1]};
+                                def endTime = ${maintenanceWindow[0] + 1} * 60 + ${maintenanceWindow[1]};
+                                
+                                return targetTime < startTime || targetTime > endTime;
+                            `
+                        }
+                    }
                 }
             }
         }
