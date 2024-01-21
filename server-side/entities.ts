@@ -33,3 +33,10 @@ export const AUDIT_LOG_INDEX = 'audit_log';
 
 export const AUDIT_LOGS_WEEKS_RANGE = 5;
 
+export enum AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES {
+    syncAggregation = 'get_sync_aggregations_from_elastic',
+    uptimeSync = 'get_uptime_sync_from_elastic',
+    internalSyncs = 'get_internal_syncs_from_elastic',
+    syncJobs = 'get_syncs_from_elastic'
+}
+

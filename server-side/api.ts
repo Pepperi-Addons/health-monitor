@@ -10,33 +10,33 @@ import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 import { DEFAULT_MONITOR_LEVEL } from './installation';
 import { SyncTest } from './sync_test.service';
-import { errors } from './entities';
-import { InternalSyncService } from './elastic-sync-data/internal-sync.service';
-import { SyncJobsService } from './elastic-sync-data/sync-jobs.service';
-import { SyncDataAggregations } from './elastic-sync-data/sync-data-aggregations.service';
-import { UptimeSync } from './elastic-sync-data/uptime-sync';
+import { AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES, errors } from './entities';
+import { AuditDataLogSyncService } from './elastic-sync.service';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
-    const elasticSyncDataService = new SyncDataAggregations(client);
-    const uptimeSyncService = new UptimeSync(client);
-
-    const syncAggregationResult = await elasticSyncDataService.getSyncsResult();
-    const uptimeCalculationResult = await uptimeSyncService.getSyncsResult();
-
-    return {...syncAggregationResult, ...uptimeCalculationResult};
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const uptimeSyncBody = await auditDataLogSyncService.getUptimeSyncData();
+    return {
+        "HourlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'], { DataType: 'HourlySyncs' }),
+        "LastDaySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'LastDaySyncs' }),
+        "WeeklySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'WeeklySyncs' }),
+        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs' }),
+        "UptimeSync": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['uptimeSync'], uptimeSyncBody)
+    }
 }
+
 export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
-    const elasticSyncDataService = new InternalSyncService(client, request.body);
-    const resultObject = await elasticSyncDataService.getSyncsResult();
-    return resultObject;
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID() };
+
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['internalSyncs'], syncBody);
 }
 
 export async function get_syncs_from_elastic(client: Client, request: Request) {
-    const syncJobsService = new SyncJobsService(client, request.body);
-    const resultObject = await syncJobsService.getSyncsResult();
-    return resultObject;
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncJobs'], request.body);
 }
 
 //#region health monitor api
