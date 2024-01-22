@@ -1,6 +1,6 @@
 import { Client } from '@pepperi-addons/debug-server/dist';
 import { PapiClient } from '@pepperi-addons/papi-sdk';
-import { AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES } from './entities';
+import { AUDIT_DATA_LOG_ADDON_UUID, AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES } from './entities';
 import MonitorSettingsService from './monitor-settings.service';
 
 export class AuditDataLogSyncService {
@@ -18,7 +18,12 @@ export class AuditDataLogSyncService {
     }
 
     async getAuditDataLogSync(functionName: AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES, syncBody) {
-        return await this.papiClient.post(`/addons/api/00000000-0000-0000-0000-00000da1a109/api/${functionName}`, syncBody);
+        try{
+            const res = await this.papiClient.post(`/addons/api/${AUDIT_DATA_LOG_ADDON_UUID}/api/${functionName}`, syncBody);
+            return res;
+        } catch (err) {
+            console.error(`Could not get sync data from audit data log, error: ${err}`);
+        }
     }
 
     private async getMonitorSettings() {

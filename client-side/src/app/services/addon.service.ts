@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { config } from '../app.config';
 import { PepAddonService, PepSessionService } from '@pepperi-addons/ngx-lib';
 import { IPepGenericListParams } from '@pepperi-addons/ngx-composite-lib/generic-list';
-import { SmartFiltersFields, SearchFields } from '../entities';
+import { SmartFiltersSyncFields, SearchSyncFields, SmartFiltersInternalSyncFields, SearchInternalSyncFields } from '../entities';
 import { ngxFilterToJsonFilter, parse, concat, JSONFilter } from '@pepperi-addons/pepperi-filters';
 
 @Injectable({ providedIn: 'root' })
@@ -25,11 +25,18 @@ export class AddonService {
     }
 
     async initSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {
-        const searchBody = await this.getQueryParameters(parameters, searchAfter);
+        const searchStringFields = ['UUID.keyword', 'Event.User.Email.keyword'];
+        const searchBody = await this.getQueryParameters(parameters, searchAfter, searchStringFields, SmartFiltersSyncFields, SearchSyncFields);
         return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_syncs_from_elastic`, searchBody).toPromise();
     }
 
-    private getQueryParameters(params: IPepGenericListParams, searchAfter: any[]) {
+    async initInternalSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {
+        const searchStringFields = ['UUID.keyword'];
+        const searchBody = await this.getQueryParameters(parameters, searchAfter, searchStringFields, SmartFiltersInternalSyncFields, SearchInternalSyncFields);
+        return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_internal_syncs_from_elastic`, searchBody).toPromise();
+    }
+
+    private getQueryParameters(params: IPepGenericListParams, searchAfter: any[],searchStringFields: string[], SmartFiltersSyncFields, SearchFields) {
         const pageSize = (params.toIndex - params.fromIndex) + 1 || 100;
         const page = params.pageIndex || (params.fromIndex / pageSize) || 0;
         const fromIndex = pageSize * page;
@@ -37,22 +44,22 @@ export class AddonService {
         let options = {
             FromIndex: fromIndex,
             SearchAfter: searchAfter,
-            Where: this.getWhereClause(params)
+            Where: this.getWhereClause(params, searchStringFields, SmartFiltersSyncFields, SearchFields)
         };
 
         return options;
     }
 
-    private getWhereClause(params: IPepGenericListParams): undefined | JSONFilter {
+    private getWhereClause(params: IPepGenericListParams, searchStringFields: string[], SmartFiltersSyncFields, SearchFields): undefined | JSONFilter {
         let filtersJson: JSONFilter;
         let searchJson: JSONFilter;
 
         if (params.searchString) {
-            searchJson = this.getSearchString(params);
+            searchJson = this.getSearchString(params, searchStringFields, SearchFields);
         }
 
         if (params.filters) {
-            filtersJson = this.getFiltersString(params);
+            filtersJson = this.getFiltersString(params, SmartFiltersSyncFields);
         }
 
         if(searchJson && filtersJson) {
@@ -62,10 +69,9 @@ export class AddonService {
         }
     }
 
-    private getSearchString(params): JSONFilter {
+    private getSearchString(params, searchStringFields: string[], SearchFields): JSONFilter {
         const typesMapping = this.getTypesMapping(SearchFields);
 
-        const searchStringFields = ['UUID.keyword', 'Event.User.Email.keyword'];
         let whereArray = [];
         searchStringFields.forEach((field: string) => {
             whereArray.push(`${field} LIKE "%${params.searchString}%"`);
@@ -75,8 +81,8 @@ export class AddonService {
         return parse(filters, typesMapping);
     }
 
-    getFiltersString(params): JSONFilter {
-        const typesMapping = this.getTypesMapping(SmartFiltersFields);
+    getFiltersString(params, SmartFiltersSyncFields): JSONFilter {
+        const typesMapping = this.getTypesMapping(SmartFiltersSyncFields);
         return ngxFilterToJsonFilter(params.filters, typesMapping);
     }
 
