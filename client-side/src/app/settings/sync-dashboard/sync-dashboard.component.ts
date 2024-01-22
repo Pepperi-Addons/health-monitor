@@ -83,12 +83,12 @@ export class SyncDashboardComponent implements OnInit {
         datasets: [{
             label: "Success",
             data: data[2],
-            borderColor: 'rgb(75, 192, 192)', // green
+            borderColor: 'rgba(144, 238, 144)', // green
             tension: 0.1,
-            backgroundColor: 'rgb(75, 192, 192)',
-            pointBorderColor: 'rgb(75, 192, 192)',
-            pointHoverBackgroundColor: 'rgb(75, 192, 192)',
-            pointHoverBorderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgb(144, 238, 144)',
+            pointBorderColor: 'rgb(144, 238, 144)',
+            pointHoverBackgroundColor: 'rgb(144, 238, 144)',
+            pointHoverBorderColor: 'rgb(144, 238, 144)',
             
             borderCapStyle: 'butt',
             borderDash: [],

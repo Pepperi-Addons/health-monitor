@@ -4,11 +4,11 @@ import { AddonService } from 'src/app/services/addon.service';
 
 
 @Component({
-  selector: 'sync-logs',
-  templateUrl: './sync-logs.component.html',
-  styleUrls: ['./sync-logs.component.scss']
+  selector: 'internal-sync-logs',
+  templateUrl: './internal-sync-logs.component.html',
+  styleUrls: ['./internal-sync-logs.component.scss']
 })
-export class SyncLogsComponent implements OnInit {
+export class InternalSyncLogsComponent implements OnInit {
   items: any[] = [];
   searchAfter: any[] = [];
   smartFilter: IPepGenericListSmartFilter;
@@ -29,9 +29,9 @@ export class SyncLogsComponent implements OnInit {
 
   listDataSource: IPepGenericListDataSource = {
     init: async (parameters: IPepGenericListParams) => {
-      const items = await this.addonService.initSyncData(parameters, this.searchAfter);
+      const items = await this.addonService.initInternalSyncData(parameters, this.searchAfter);
       this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
+      this.items = items.data;
       this.smartFilter = this.getSmartFilters(parameters);
 
       return Promise.resolve({
@@ -52,23 +52,9 @@ export class SyncLogsComponent implements OnInit {
               ReadOnly: true
             },
             {
-              FieldID: 'CreationDateTime',
+              FieldID: 'StartDateTime',
               Type: 'DateAndTime',
-              Title: 'Creation Date Time',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'ModificationDateTime',
-              Type: 'DateAndTime',
-              Title: 'Modification Date Time',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'User',
-              Type: 'TextBox',
-              Title: 'User',
+              Title: 'Date & Time',
               Mandatory: true,
               ReadOnly: true
             },
@@ -86,64 +72,8 @@ export class SyncLogsComponent implements OnInit {
               Mandatory: true,
               ReadOnly: true
             },
-            {
-              FieldID: 'PepperiVersion',
-              Type: 'TextBox',
-              Title: 'Pepperi Version',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'Device',
-              Type: 'TextBox',
-              Title: 'Device',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'OSVersion',
-              Type: 'TextBox',
-              Title: 'OS Version',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'DeviceID',
-              Type: 'TextBox',
-              Title: 'Device ID',
-              Mandatory: true,
-              ReadOnly: true
-            },
-            {
-              FieldID: 'ClientType',
-              Type: 'TextBox',
-              Title: 'Client Type',
-              Mandatory: true,
-              ReadOnly: true
-            },
           ],
           Columns: [
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
-            {
-              Width: 10
-            },
             {
               Width: 10
             },
@@ -168,7 +98,7 @@ export class SyncLogsComponent implements OnInit {
       let items = await this.addonService.initSyncData(params, this.searchAfter);
       this.searchAfter = items.searchAfter;
       this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
+      this.items = items.data;
 
       return Promise.resolve(this.items);
     }
@@ -176,19 +106,11 @@ export class SyncLogsComponent implements OnInit {
 
   fixAuditLogSyncs(items) {
     return items.data.map((item) => {
-      const resultObject = JSON.parse(item.AuditInfo.ResultObject);
       return {
-        UUID: item['UUID'],
-        CreationDateTime: item['CreationDateTime'],
-        ModificationDateTime: item['ModificationDateTime'],
-        User: item.Event.User.Email,
-        Status: item.Status.Name,
-        NumberOfTry: item.AuditInfo.JobMessageData.NumberOfTry,
-        PepperiVersion: resultObject.ClientInfo.SoftwareVersion,
-        Device: resultObject.ClientInfo.DeviceName + '(' + resultObject.ClientInfo.DeviceModel + ')',
-        OSVersion: resultObject.ClientInfo.SystemVersion,
-        DeviceID: resultObject.ClientInfo.DeviceExternalID,
-        ClientType: resultObject.ClientInfo.SystemName
+        UUID: item.UUID,
+        StartDateTime: item.StartDateTime,
+        Status: item.Status,
+        NumberOfTry: item.NumberOfTry
       }
     });
   }
@@ -211,20 +133,9 @@ export class SyncLogsComponent implements OnInit {
                     OptionalValues: []
                 },
                 {
-                    FieldID: 'Event.User.Email.keyword',
-                    Type: 'MultipleStringValues',
-                    Title: 'User',
-                    OptionalValues: []
-                },
-                {
-                    FieldID: 'CreationDateTime',
+                    FieldID: 'AuditInfo.JobMessageData.StartDateTime',
                     Type: 'DateTime',
-                    Title: 'Creation time'
-                },
-                {
-                    FieldID: 'ModificationDateTime',
-                    Type: 'DateTime',
-                    Title: 'Modification time'
+                    Title: 'Date & Time'
                 },
                 {
                     FieldID: 'AuditInfo.JobMessageData.NumberOfTry',

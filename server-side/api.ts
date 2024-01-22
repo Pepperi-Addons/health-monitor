@@ -29,7 +29,7 @@ export async function get_sync_aggregations_from_elastic(client: Client, request
 
 export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
-    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID() };
+    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID(), Params: request.body };
 
     return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['internalSyncs'], syncBody);
 }

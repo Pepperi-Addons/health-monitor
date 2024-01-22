@@ -29,6 +29,10 @@
                 <sync-logs *ngIf="tabID == 2">
                 </sync-logs>
             </mat-tab>
+            <mat-tab id="uptimeLogs " label="{{ 'Up_Time_Log' | translate}}">
+                <internal-sync-logs *ngIf="tabID == 3">
+                </internal-sync-logs>
+            </mat-tab>
         </mat-tab-group>
     </ng-container>
 

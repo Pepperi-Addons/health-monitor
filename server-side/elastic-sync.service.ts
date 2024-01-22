@@ -15,10 +15,15 @@ export class AuditDataLogSyncService {
             addonSecretKey: client.AddonSecretKey,
             actionUUID: client.ActionUUID
         });
-    }
+    } 
 
     async getAuditDataLogSync(functionName: AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES, syncBody) {
-        return await this.papiClient.post(`/addons/api/${AUDIT_DATA_LOG_ADDON_UUID}/api/${functionName}`, syncBody);
+        try{
+            const res = await this.papiClient.post(`/addons/api/${AUDIT_DATA_LOG_ADDON_UUID}/api/${functionName}`, syncBody);
+            return res;
+        } catch (err) {
+            console.error(`Could not get sync data from audit data log, error: ${err}`);
+        }
     }
 
     private async getMonitorSettings() {
