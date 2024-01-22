@@ -40,3 +40,4 @@ export enum AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES {
     syncJobs = 'get_syncs_from_elastic'
 }
 
+export const AUDIT_DATA_LOG_ADDON_UUID = '00000000-0000-0000-0000-00000da1a109';
