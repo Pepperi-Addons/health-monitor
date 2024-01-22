@@ -27,12 +27,25 @@ export class AddonService {
     async initSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {
         const searchStringFields = ['UUID.keyword', 'Event.User.Email.keyword'];
         const searchBody = await this.getQueryParameters(parameters, searchAfter, searchStringFields, SmartFiltersSyncFields, SearchSyncFields);
+
+        const smartFiltersSearchBody = { SearchBody: searchBody, DataType: 'SyncJob'};
+        this.filtersDistinctValues = await this.getSmartFiletrsDistinctValues(smartFiltersSearchBody);
+
         return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_syncs_from_elastic`, searchBody).toPromise();
+    }
+
+    async getSmartFiletrsDistinctValues(searchBody) {
+        const res = await this.addonService.postAddonApiCall(config.AddonUUID, 'api', 'get_smart_filters_from_elastic', searchBody).toPromise();
+        return res;
     }
 
     async initInternalSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {
         const searchStringFields = ['UUID.keyword'];
         const searchBody = await this.getQueryParameters(parameters, searchAfter, searchStringFields, SmartFiltersInternalSyncFields, SearchInternalSyncFields);
+
+        const smartFiltersSearchBody = { SearchBody: searchBody, DataType: 'InternalSync'};
+        this.filtersDistinctValues = await this.getSmartFiletrsDistinctValues(smartFiltersSearchBody);
+
         return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_internal_syncs_from_elastic`, searchBody).toPromise();
     }
 

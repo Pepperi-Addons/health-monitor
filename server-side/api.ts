@@ -39,6 +39,13 @@ export async function get_syncs_from_elastic(client: Client, request: Request) {
     return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncJobs'], request.body);
 }
 
+export async function get_smart_filters_from_elastic(client: Client, request: Request) {
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID(), Params: request.body.Params, DataType: request.body.DataType };
+
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['smartFilters'], syncBody);
+}
+
 //#region health monitor api
 //mechanism to check for sync failure - run an internal sync and update relevant webhooks 
 export async function sync_failed(client: Client, request: Request) {

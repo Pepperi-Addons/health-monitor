@@ -130,7 +130,7 @@ export class InternalSyncLogsComponent implements OnInit {
                     FieldID: 'Status.Name.keyword',
                     Type: 'MultipleStringValues',
                     Title: 'Status',
-                    OptionalValues: []
+                    OptionalValues: this.addonService.filtersDistinctValues.StatusNames
                 },
                 {
                     FieldID: 'AuditInfo.JobMessageData.StartDateTime',
