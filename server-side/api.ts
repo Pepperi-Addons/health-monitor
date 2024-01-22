@@ -31,12 +31,12 @@ export async function get_internal_syncs_from_elastic(client: Client, request: R
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
     const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID(), Params: request.body };
 
-    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['internalSyncs'], syncBody);
+    return (await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['internalSyncs'], syncBody)) || {};
 }
 
 export async function get_syncs_from_elastic(client: Client, request: Request) {
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
-    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncJobs'], request.body);
+    return (await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncJobs'], request.body)) || {};
 }
 
 export async function get_smart_filters_from_elastic(client: Client, request: Request) {
