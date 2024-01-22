@@ -15,7 +15,7 @@ export class AuditDataLogSyncService {
             addonSecretKey: client.AddonSecretKey,
             actionUUID: client.ActionUUID
         });
-    }
+    } 
 
     async getAuditDataLogSync(functionName: AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES, syncBody) {
         try{
