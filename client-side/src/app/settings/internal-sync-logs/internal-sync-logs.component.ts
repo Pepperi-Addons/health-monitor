@@ -31,7 +31,7 @@ export class InternalSyncLogsComponent implements OnInit {
     init: async (parameters: IPepGenericListParams) => {
       const items = await this.addonService.initInternalSyncData(parameters, this.searchAfter);
       this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
+      this.items = items.data;
       this.smartFilter = this.getSmartFilters(parameters);
 
       return Promise.resolve({
@@ -98,7 +98,7 @@ export class InternalSyncLogsComponent implements OnInit {
       let items = await this.addonService.initSyncData(params, this.searchAfter);
       this.searchAfter = items.searchAfter;
       this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
+      this.items = items.data;
 
       return Promise.resolve(this.items);
     }
