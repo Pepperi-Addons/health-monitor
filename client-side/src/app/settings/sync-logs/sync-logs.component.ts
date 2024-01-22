@@ -82,7 +82,7 @@ export class SyncLogsComponent implements OnInit {
             {
               FieldID: 'NumberOfTry',
               Type: 'TextBox',
-              Title: 'Number Of Tries',
+              Title: 'Number Of Try',
               Mandatory: true,
               ReadOnly: true
             },
@@ -170,7 +170,7 @@ export class SyncLogsComponent implements OnInit {
       this.size = items.size;
       this.items = this.fixAuditLogSyncs(items);
 
-      return Promise.resolve(items);
+      return Promise.resolve(this.items);
     }
   }
 
