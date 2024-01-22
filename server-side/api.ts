@@ -10,9 +10,41 @@ import fetch from "node-fetch";
 import { ErrorInterface, ErrorInterfaceToHtmlTable, InnerErrorInterface, IsInstanceOfErrorInterface } from './error.interface';
 import { DEFAULT_MONITOR_LEVEL } from './installation';
 import { SyncTest } from './sync_test.service';
-import { errors } from './entities';
+import { AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES, errors } from './entities';
+import { AuditDataLogSyncService } from './elastic-sync.service';
 
 const KEY_FOR_TOKEN = 'NagiosToken'
+
+export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const uptimeSyncBody = await auditDataLogSyncService.getUptimeSyncData();
+    return {
+        "HourlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'], { DataType: 'HourlySyncs' }),
+        "LastDaySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'LastDaySyncs' }),
+        "WeeklySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'WeeklySyncs' }),
+        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs' }),
+        "UptimeSync": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['uptimeSync'], uptimeSyncBody)
+    }
+}
+
+export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID(), Params: request.body };
+
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['internalSyncs'], syncBody);
+}
+
+export async function get_syncs_from_elastic(client: Client, request: Request) {
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncJobs'], request.body);
+}
+
+export async function get_smart_filters_from_elastic(client: Client, request: Request) {
+    const auditDataLogSyncService = new AuditDataLogSyncService(client);
+    const syncBody = { CodeJobUUID: await auditDataLogSyncService.getJobUUID(), Params: request.body.Params, DataType: request.body.DataType };
+
+    return await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['smartFilters'], syncBody);
+}
 
 //#region health monitor api
 //mechanism to check for sync failure - run an internal sync and update relevant webhooks 

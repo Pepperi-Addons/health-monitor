@@ -11,21 +11,10 @@
     <ng-container pep-main-area>
         <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
             <mat-tab id="dashboard" label="{{ 'Health_Monitor_Dashboard_Tab1' | translate}}">
-                <div class="rows" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
-                    <div class="content row">
-                        <div class="info-chart chart-background">
-                            <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
-                            <p class="value bold" >{{dashboardData?.LastSync?.Time}} UTC </p>
-                        </div>
-        
-                        <div class="info-chart chart-background">
-                            <p class="desc color-dimmed">Pending Actions</p>
-                            <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
-                        </div>
-                    </div>
-                </div>
+                <sync-dashboard *ngIf="tabID == 0">
+                </sync-dashboard>
             </mat-tab>
-            <mat-tab id="pendingActions" label="{{ 'Health_Monitor_Dashboard_Tab2' | translate}}">
+            <mat-tab id="pendingActions " label="{{ 'Health_Monitor_Dashboard_Tab2' | translate}}">
                 <pep-generic-list
                     [addPadding]="true"
                     [dataSource]="listDataSource" 
@@ -35,6 +24,14 @@
                     [inline]="false" 
                     noDataFoundMsg="No data">
                 </pep-generic-list>
+            </mat-tab>
+            <mat-tab id="syncLogs " label="{{ 'Sync_Log_Tab' | translate}}">
+                <sync-logs *ngIf="tabID == 2">
+                </sync-logs>
+            </mat-tab>
+            <mat-tab id="uptimeLogs " label="{{ 'Up_Time_Log' | translate}}">
+                <internal-sync-logs *ngIf="tabID == 3">
+                </internal-sync-logs>
             </mat-tab>
         </mat-tab-group>
     </ng-container>

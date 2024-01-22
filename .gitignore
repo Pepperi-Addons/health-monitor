@@ -30,3 +30,4 @@ publish/api.js
 publish/addon-usage.js
 publish/3rdpartylicenses.txt
 publish/161.js
+/publish/**

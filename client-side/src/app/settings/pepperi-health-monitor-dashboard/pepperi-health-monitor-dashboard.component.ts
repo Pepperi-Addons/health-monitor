@@ -25,14 +25,12 @@ export class PepperiHealthMonitorDashboardComponent implements OnInit {
   }
 
   loadData() {
-      this.dashboardData.LastSync.StatusName = this.dashboardData.LastSync.Status? 'Success' : 'Delayed';
-      this.dashboardData.LastSync.Color = this.dashboardData.LastSync.Status? 'inherit' : 'rgba(255, 89, 90, 1)'; 
     }
 
 
   listDataSource: IPepGenericListDataSource = {
     init: async (parameters) => {
-      this.dashboardData = await this.addonService.initData();
+      this.dashboardData = await this.addonService.initHealthMonitorDashaboardData();
       this.loadData();
 
       this.items = (JSON.parse(this.dashboardData.PendingActions.List)).map((item) => {

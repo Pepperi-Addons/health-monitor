@@ -1,0 +1,49 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-main-area>
+        <div class="rows">
+            <div class="content row" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
+                    <p class="value bold" >{{dashboardData?.LastSync?.Time}} </p>
+                </div>
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Pending Actions</p>
+                    <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
+                </div>
+            </div>
+            <div class="content row" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync?.dates }}</p>
+                    <p class="value bold" >{{uptimeValues?.[0]}} </p>
+                </div>
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Up time this month</p>
+                    <p class="value bold">{{uptimeValues?.[1]}}</p>
+                </div>
+            </div>
+            <div class="content row">
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Number of syncs made in the last 24 hours</p>
+                    <canvas #hourlySync id="hourlySync"></canvas>
+                </div>
+            </div>
+            <div class="content row">
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Last 24h Sync status</p>
+                    <canvas #dailySync id="dailySync"></canvas>
+                </div>
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Weekly Sync Status</p>
+                    <canvas #weeklySync id="weeklySync"></canvas>
+                </div>
+                <div class="chart chart-background">
+                    <p class="pep-border-bottom">Monthly Sync Status</p>
+                    <canvas #monthlySync id="monthlySync"></canvas>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>
