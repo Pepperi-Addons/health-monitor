@@ -208,13 +208,13 @@ export class SyncLogsComponent implements OnInit {
                     FieldID: 'Status.Name.keyword',
                     Type: 'MultipleStringValues',
                     Title: 'Status',
-                    OptionalValues: []
+                    OptionalValues: this.addonService.filtersDistinctValues.StatusNames
                 },
                 {
                     FieldID: 'Event.User.Email.keyword',
                     Type: 'MultipleStringValues',
                     Title: 'User',
-                    OptionalValues: []
+                    OptionalValues: this.addonService.filtersDistinctValues.UserNames
                 },
                 {
                     FieldID: 'CreationDateTime',
