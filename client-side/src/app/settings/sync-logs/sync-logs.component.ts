@@ -30,9 +30,13 @@ export class SyncLogsComponent implements OnInit {
   listDataSource: IPepGenericListDataSource = {
     init: async (parameters: IPepGenericListParams) => {
       const items = await this.addonService.initSyncData(parameters, this.searchAfter);
-      this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
-      this.smartFilter = this.getSmartFilters(parameters);
+      this.size = items.size || 0;
+      if(this.size > 0){
+        this.items = this.fixAuditLogSyncs(items);
+        this.smartFilter = this.getSmartFilters(parameters);
+      } else{
+        this.items = [];
+      }
 
       return Promise.resolve({
         dataView: {

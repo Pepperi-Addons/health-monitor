@@ -4,7 +4,7 @@
             <div class="content row" [ngStyle]="{ visibility: dashboardData ? 'visible':'hidden'}">
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Last Sync - {{ dashboardData?.LastSync?.StatusName}}</p>
-                    <p class="value bold" >{{dashboardData?.LastSync?.Time}} </p>
+                    <p class="value bold">{{dashboardData?.LastSync?.Time}} </p>
                 </div>
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Pending Actions</p>
@@ -14,13 +14,19 @@
             <div class="content row" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync?.dates }}</p>
-                    <p class="value bold" >{{uptimeValues?.[0]}} </p>
+                    <p class="value bold">{{uptimeValues?.[0]}} </p>
                 </div>
                 <div class="info-chart chart-background">
                     <p class="desc color-dimmed">Up time this month</p>
                     <p class="value bold">{{uptimeValues?.[1]}}</p>
                 </div>
             </div>
+            <ng-container *ngIf="this.isLoaded === true">
+                <ng-container *ngIf="this.syncNotEmpty === false; then emptyDashboard; else dashboard;"></ng-container>
+            </ng-container>
+        </div>
+
+        <ng-template #dashboard>
             <div class="content row">
                 <div class="chart chart-background">
                     <p class="pep-border-bottom">Number of syncs made in the last 24 hours</p>
@@ -41,7 +47,12 @@
                     <canvas #monthlySync id="monthlySync"></canvas>
                 </div>
             </div>
-        </div>
+        </ng-template>
+
+
+        <ng-template #emptyDashboard>
+            <p class="body-md color-dimmed">Could not load charts data.</p>
+        </ng-template>
     </ng-container>
 
 </pep-page-layout>
