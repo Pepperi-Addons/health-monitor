@@ -19,7 +19,7 @@ export class SyncDashboardComponent implements OnInit {
   uptimeValues;
 
   isLoaded: boolean = false;
-  syncNotEmpty: boolean = false;
+  syncEmpty: boolean = true;
   
   tabID = 0;
 
@@ -46,9 +46,9 @@ export class SyncDashboardComponent implements OnInit {
 
     this.addonService.initChartsData().then((result: any) => {
       this.syncData = result;
-      this.syncNotEmpty = false// Object.keys(this.syncData).length > 0;
+      this.syncEmpty = Object.keys(this.syncData).length === 0;
       this.isLoaded = true;
-      if(this.syncNotEmpty) {
+      if(!this.syncEmpty) {
         this.loadData();
         this.uptimeValues = Object.values(this.syncData?.UptimeSync.data);
       }
