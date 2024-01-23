@@ -21,38 +21,31 @@
                     <p class="value bold">{{uptimeValues?.[1]}}</p>
                 </div>
             </div>
-            <ng-container *ngIf="this.isLoaded === true">
-                <ng-container *ngIf="this.syncNotEmpty === false; then emptyDashboard; else dashboard;"></ng-container>
+            <ng-container>
+                <!-- <ng-container *ngIf="this.syncNotEmpty === false; then emptyDashboard; else dashboard;"></ng-container> -->
+                <p class="body-md color-dimmed" *ngIf="this.syncNotEmpty === false && isLoaded === true">Could not load charts data.</p>
+                <div class="content row">
+                    <div class="chart chart-background">
+                        <p class="pep-border-bottom">Number of syncs made in the last 24 hours</p>
+                        <canvas #hourlySync id="hourlySync"></canvas>
+                    </div>
+                </div>
+                <div class="content row">
+                    <div class="chart chart-background">
+                        <p class="pep-border-bottom">Last 24h Sync status</p>
+                        <canvas #dailySync id="dailySync"></canvas>
+                    </div>
+                    <div class="chart chart-background">
+                        <p class="pep-border-bottom">Weekly Sync Status</p>
+                        <canvas #weeklySync id="weeklySync"></canvas>
+                    </div>
+                    <div class="chart chart-background">
+                        <p class="pep-border-bottom">Monthly Sync Status</p>
+                        <canvas #monthlySync id="monthlySync"></canvas>
+                    </div>
+                </div>
             </ng-container>
         </div>
-
-        <ng-template #dashboard>
-            <div class="content row">
-                <div class="chart chart-background">
-                    <p class="pep-border-bottom">Number of syncs made in the last 24 hours</p>
-                    <canvas #hourlySync id="hourlySync"></canvas>
-                </div>
-            </div>
-            <div class="content row">
-                <div class="chart chart-background">
-                    <p class="pep-border-bottom">Last 24h Sync status</p>
-                    <canvas #dailySync id="dailySync"></canvas>
-                </div>
-                <div class="chart chart-background">
-                    <p class="pep-border-bottom">Weekly Sync Status</p>
-                    <canvas #weeklySync id="weeklySync"></canvas>
-                </div>
-                <div class="chart chart-background">
-                    <p class="pep-border-bottom">Monthly Sync Status</p>
-                    <canvas #monthlySync id="monthlySync"></canvas>
-                </div>
-            </div>
-        </ng-template>
-
-
-        <ng-template #emptyDashboard>
-            <p class="body-md color-dimmed">Could not load charts data.</p>
-        </ng-template>
     </ng-container>
 
 </pep-page-layout>

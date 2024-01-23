@@ -46,7 +46,7 @@ export class SyncDashboardComponent implements OnInit {
 
     this.addonService.initChartsData().then((result: any) => {
       this.syncData = result;
-      this.syncNotEmpty = Object.keys(this.syncData).length > 0;
+      this.syncNotEmpty = false// Object.keys(this.syncData).length > 0;
       this.isLoaded = true;
       if(this.syncNotEmpty) {
         this.loadData();
