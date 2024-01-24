@@ -175,25 +175,6 @@ export class SyncLogsComponent implements OnInit {
       return Promise.resolve(this.items);
     }
   }
-
-  // fixAuditLogSyncs(items) {
-  //   return items.data.map((item) => {
-  //     const resultObject = JSON.parse(item.AuditInfo.ResultObject);
-  //     return {
-  //       UUID: item['UUID'],
-  //       CreationDateTime: item['CreationDateTime'],
-  //       ModificationDateTime: item['ModificationDateTime'],
-  //       User: item.Event.User.Email,
-  //       Status: item.Status.Name,
-  //       NumberOfTry: item.AuditInfo.JobMessageData.NumberOfTry,
-  //       PepperiVersion: resultObject.ClientInfo.SoftwareVersion,
-  //       Device: resultObject.ClientInfo.DeviceName + '(' + resultObject.ClientInfo.DeviceModel + ')',
-  //       OSVersion: resultObject.ClientInfo.SystemVersion,
-  //       DeviceID: resultObject.ClientInfo.DeviceExternalID,
-  //       ClientType: resultObject.ClientInfo.SystemName
-  //     }
-  //   });
-  // }
   
   getSmartFilters(parameters: IPepGenericListParams): IPepGenericListSmartFilter {
     return {
