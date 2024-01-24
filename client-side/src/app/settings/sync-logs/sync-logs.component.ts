@@ -30,9 +30,11 @@ export class SyncLogsComponent implements OnInit {
   listDataSource: IPepGenericListDataSource = {
     init: async (parameters: IPepGenericListParams) => {
       const items = await this.addonService.initSyncData(parameters, this.searchAfter);
-      this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
-      this.smartFilter = this.getSmartFilters(parameters);
+      this.size = items.size || 0;
+      this.items = items.data || [];
+      if(this.size > 0){
+        this.smartFilter = this.getSmartFilters(parameters);
+      }
 
       return Promise.resolve({
         dataView: {
@@ -124,7 +126,7 @@ export class SyncLogsComponent implements OnInit {
           ],
           Columns: [
             {
-              Width: 10
+              Width: 15
             },
             {
               Width: 10
@@ -139,16 +141,16 @@ export class SyncLogsComponent implements OnInit {
               Width: 10
             },
             {
-              Width: 10
+              Width: 5
+            },
+            {
+              Width: 5
             },
             {
               Width: 10
             },
             {
-              Width: 10
-            },
-            {
-              Width: 10
+              Width: 5
             },
             {
               Width: 10
@@ -168,29 +170,10 @@ export class SyncLogsComponent implements OnInit {
       let items = await this.addonService.initSyncData(params, this.searchAfter);
       this.searchAfter = items.searchAfter;
       this.size = items.size;
-      this.items = this.fixAuditLogSyncs(items);
+      this.items = items.data;
 
       return Promise.resolve(this.items);
     }
-  }
-
-  fixAuditLogSyncs(items) {
-    return items.data.map((item) => {
-      const resultObject = JSON.parse(item.AuditInfo.ResultObject);
-      return {
-        UUID: item['UUID'],
-        CreationDateTime: item['CreationDateTime'],
-        ModificationDateTime: item['ModificationDateTime'],
-        User: item.Event.User.Email,
-        Status: item.Status.Name,
-        NumberOfTry: item.AuditInfo.JobMessageData.NumberOfTry,
-        PepperiVersion: resultObject.ClientInfo.SoftwareVersion,
-        Device: resultObject.ClientInfo.DeviceName + '(' + resultObject.ClientInfo.DeviceModel + ')',
-        OSVersion: resultObject.ClientInfo.SystemVersion,
-        DeviceID: resultObject.ClientInfo.DeviceExternalID,
-        ClientType: resultObject.ClientInfo.SystemName
-      }
-    });
   }
   
   getSmartFilters(parameters: IPepGenericListParams): IPepGenericListSmartFilter {

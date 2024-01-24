@@ -8,8 +8,7 @@ export const SmartFiltersSyncFields = {
 
 export const SmartFiltersInternalSyncFields = {
     "AuditInfo.JobMessageData.StartDateTime": 'DateTime',
-    "Status.Name.keyword": 'String',
-    "AuditInfo.JobMessageData.NumberOfTry": 'Integer'
+    "Status.Name.keyword": 'String'
 }
 
 export const SearchSyncFields = {

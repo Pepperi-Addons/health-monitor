@@ -9,5 +9,11 @@
     "Edit_Alert_Title":"Edit Alert",
     "Edit_Alert_Back":"Back",
     "Edit_Alert_Save":"Save",
-    "Up_Time_Log": "Up Time Log"
+    "Up_Time_Log": "Up Time Log",
+    "Error_Loading_Data": "Could not load charts data.",
+    "Hourly_Chart": "Number of syncs made in the last 24 hours",
+    "Daily_Chart": "Last 24h Sync status",
+    "Weekly_Chart": "Weekly Sync Status",
+    "Monthly_Chart": "Monthly Sync Status",
+    "Up_Time_Chart_This_Month": "Up time this month"
 }

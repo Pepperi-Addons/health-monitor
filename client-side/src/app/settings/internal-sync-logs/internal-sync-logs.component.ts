@@ -30,9 +30,11 @@ export class InternalSyncLogsComponent implements OnInit {
   listDataSource: IPepGenericListDataSource = {
     init: async (parameters: IPepGenericListParams) => {
       const items = await this.addonService.initInternalSyncData(parameters, this.searchAfter);
-      this.size = items.size;
-      this.items = items.data;
-      this.smartFilter = this.getSmartFilters(parameters);
+      this.size = items.size || 0;
+      this.items = items.data || [];
+      if(this.size > 0){
+        this.smartFilter = this.getSmartFilters(parameters);
+      }
 
       return Promise.resolve({
         dataView: {
@@ -64,19 +66,9 @@ export class InternalSyncLogsComponent implements OnInit {
               Title: 'Status',
               Mandatory: true,
               ReadOnly: true
-            },
-            {
-              FieldID: 'NumberOfTry',
-              Type: 'TextBox',
-              Title: 'Number Of Try',
-              Mandatory: true,
-              ReadOnly: true
-            },
+            }
           ],
           Columns: [
-            {
-              Width: 10
-            },
             {
               Width: 10
             },
@@ -103,17 +95,6 @@ export class InternalSyncLogsComponent implements OnInit {
       return Promise.resolve(this.items);
     }
   }
-
-  fixAuditLogSyncs(items) {
-    return items.data.map((item) => {
-      return {
-        UUID: item.UUID,
-        StartDateTime: item.StartDateTime,
-        Status: item.Status,
-        NumberOfTry: item.NumberOfTry
-      }
-    });
-  }
   
   getSmartFilters(parameters: IPepGenericListParams): IPepGenericListSmartFilter {
     return {
@@ -136,11 +117,6 @@ export class InternalSyncLogsComponent implements OnInit {
                     FieldID: 'AuditInfo.JobMessageData.StartDateTime',
                     Type: 'DateTime',
                     Title: 'Date & Time'
-                },
-                {
-                    FieldID: 'AuditInfo.JobMessageData.NumberOfTry',
-                    Type: 'Integer',
-                    Title: 'Number Of Try'
                 }
             ],
             FrozenColumnsCount: 0,
