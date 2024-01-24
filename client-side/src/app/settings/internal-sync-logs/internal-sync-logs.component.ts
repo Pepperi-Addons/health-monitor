@@ -66,19 +66,9 @@ export class InternalSyncLogsComponent implements OnInit {
               Title: 'Status',
               Mandatory: true,
               ReadOnly: true
-            },
-            {
-              FieldID: 'NumberOfTry',
-              Type: 'TextBox',
-              Title: 'Number Of Try',
-              Mandatory: true,
-              ReadOnly: true
-            },
+            }
           ],
           Columns: [
-            {
-              Width: 10
-            },
             {
               Width: 10
             },
@@ -127,11 +117,6 @@ export class InternalSyncLogsComponent implements OnInit {
                     FieldID: 'AuditInfo.JobMessageData.StartDateTime',
                     Type: 'DateTime',
                     Title: 'Date & Time'
-                },
-                {
-                    FieldID: 'AuditInfo.JobMessageData.NumberOfTry',
-                    Type: 'Integer',
-                    Title: 'Number Of Try'
                 }
             ],
             FrozenColumnsCount: 0,

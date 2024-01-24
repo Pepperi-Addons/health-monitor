@@ -126,7 +126,7 @@ export class SyncLogsComponent implements OnInit {
           ],
           Columns: [
             {
-              Width: 10
+              Width: 15
             },
             {
               Width: 10
@@ -141,16 +141,16 @@ export class SyncLogsComponent implements OnInit {
               Width: 10
             },
             {
-              Width: 10
+              Width: 5
+            },
+            {
+              Width: 5
             },
             {
               Width: 10
             },
             {
-              Width: 10
-            },
-            {
-              Width: 10
+              Width: 5
             },
             {
               Width: 10
