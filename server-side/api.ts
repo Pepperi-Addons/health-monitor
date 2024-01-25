@@ -19,10 +19,10 @@ export async function get_sync_aggregations_from_elastic(client: Client, request
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
     const uptimeSyncBody = await auditDataLogSyncService.getUptimeSyncData();
     return {
-        "HourlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'], { DataType: 'HourlySyncs' }),
-        "LastDaySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'LastDaySyncs' }),
-        "WeeklySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'WeeklySyncs' }),
-        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs' }),
+        "HourlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'], { DataType: 'HourlySyncs', Offset: auditDataLogSyncService.timeZoneOffsetToString(request.body.TimeZoneOffset) }),
+        "LastDaySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'LastDaySyncs', Offset: auditDataLogSyncService.timeZoneOffsetToString(request.body.TimeZoneOffset) }),
+        "WeeklySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'WeeklySyncs', Offset: auditDataLogSyncService.timeZoneOffsetToString(request.body.TimeZoneOffset) }),
+        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs', Offset: auditDataLogSyncService.timeZoneOffsetToString(request.body.TimeZoneOffset) }),
         "UptimeSync": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['uptimeSync'], uptimeSyncBody)
     }
 }

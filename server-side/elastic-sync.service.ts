@@ -40,4 +40,26 @@ export class AuditDataLogSyncService {
         const monitorLevel = monitorSettings.MonitorLevel;
         return { CodeJobUUID: codeJobUUID, MonitorLevel: monitorLevel };
     }
+
+    timeZoneOffsetToString(timeZoneOffset: number): string | undefined {
+        let timeZoneOffsetString: string | undefined = undefined;
+     
+        if (timeZoneOffset) {
+            timeZoneOffsetString = this.toHoursAndMinutes(Math.abs(timeZoneOffset));
+            timeZoneOffsetString = (timeZoneOffset >= 0) ? `+${timeZoneOffsetString}` : `-${timeZoneOffsetString}`;
+        }
+     
+        return timeZoneOffsetString;
+      }
+     
+      private toHoursAndMinutes(totalMinutes: number): string {
+        const minutes = totalMinutes % 60;
+        const hours = Math.floor(totalMinutes / 60);
+     
+        return `${this.padTo2Digits(hours)}:${this.padTo2Digits(minutes)}`;
+      }
+
+      private padTo2Digits(num: number): string {
+        return num.toString().padStart(2, '0');
+      }
 }
