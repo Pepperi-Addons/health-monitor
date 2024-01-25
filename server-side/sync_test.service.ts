@@ -204,11 +204,13 @@ export class SyncTest {
     
         //sync
         try {
+            let timeoutReached: boolean = false;
             console.log('HealthMonitorAddon, SyncFailedTest start POST sync');
             timeout = setTimeout(async  () => {
                 //return 'TIMEOUT-SYNC';
                 this.updateSystemHealthBody('Error', errors['TIMEOUT-SYNC']["Message"]);
                 await StatusUpdate(this.systemHealthBody, client, monitorSettingsService, false, false, 'TIMEOUT-SYNC', '', monitorSettings);
+                timeoutReached = true;
             }, 120000);
             start = Date.now();
             syncResponse = await monitorSettingsService.papiClient.post('/application/sync', body);
@@ -216,7 +218,7 @@ export class SyncTest {
             const syncJobUUID = syncResponse.SyncJobUUID;
             //check if the values field have been updated
             statusResponse = await monitorSettingsService.papiClient.get('/application/sync/jobinfo/' + syncJobUUID);
-            while (statusResponse.Status == 'SyncStart' || statusResponse.Status == 'New' || statusResponse.Status == 'PutInProgress' || statusResponse.Status == 'GetInProgress') {
+            while (!timeoutReached && (statusResponse.Status == 'SyncStart' || statusResponse.Status == 'New' || statusResponse.Status == 'PutInProgress' || statusResponse.Status == 'GetInProgress')) {
                 await sleep(2000);
                 statusResponse = await monitorSettingsService.papiClient.get('/application/sync/jobinfo/' + syncJobUUID);
             }
