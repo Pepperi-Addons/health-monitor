@@ -152,7 +152,24 @@ export class SyncDashboardComponent implements OnInit {
             pointHitRadius: 10,
             spanGaps: false
           }]
+      },
+      options: {
+        interaction: {
+          mode: 'point',
+          axis: 'x',
+          intersect: false
+        },
+        plugins: {
+          tooltip: {
+           enabled: true,
+           mode: 'nearest'
+         },          
+          legend: {
+            display: true,
+          }  
+        }
       }
+      
     });
   }
 
