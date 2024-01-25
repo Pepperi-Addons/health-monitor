@@ -40,4 +40,5 @@ export class AuditDataLogSyncService {
         const monitorLevel = monitorSettings.MonitorLevel;
         return { CodeJobUUID: codeJobUUID, MonitorLevel: monitorLevel };
     }
+
 }

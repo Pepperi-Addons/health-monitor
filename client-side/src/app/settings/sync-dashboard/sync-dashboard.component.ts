@@ -186,30 +186,30 @@ export class SyncDashboardComponent implements OnInit {
           barThickness: 30
         },
         {
-          label: "Delayed",
-          data: data[0],
-          backgroundColor: 'rgb(255, 165, 0)',
-          borderWidth: 1,
-          barThickness: 30
-        },
-        {
           label: "Failed",
           data: data[1],
           backgroundColor: 'rgb(255, 0, 0)',
           borderWidth: 1,
           barThickness: 30
-        }]},
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true,
-            stacked: true
-          },
-          x: {
-            stacked: true
-          }
         },
-      },
+        {
+          label: "Delayed",
+          data: data[0],
+          backgroundColor: 'rgb(255, 165, 0)',
+          borderWidth: 1,
+          barThickness: 30
+        }]},
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              stacked: true
+            },
+            x: {
+              stacked: true
+            }
+          },
+        },
     });
   }
     

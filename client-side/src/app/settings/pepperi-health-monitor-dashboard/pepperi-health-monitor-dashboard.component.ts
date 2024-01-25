@@ -1,5 +1,4 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { Chart } from "chart.js";
 import { IPepGenericListDataSource } from "@pepperi-addons/ngx-composite-lib/generic-list";
 import { AddonService } from 'src/app/services/addon.service';
 
