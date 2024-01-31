@@ -158,6 +158,17 @@ export class SyncDashboardComponent implements OnInit {
         }]
       },
       options: {
+        plugins: {
+          legend: {
+            display: true,
+          },
+          tooltip: {
+            enabled: true,
+            mode: 'x',
+            intersect: false,
+            position: 'nearest'
+          }
+        },
         scales: {
           y: {
             beginAtZero: true,
@@ -167,7 +178,7 @@ export class SyncDashboardComponent implements OnInit {
             stacked: true
           }
         },
-      },
+      }
     });
   }
 

@@ -21,7 +21,7 @@ export class AddonService {
     }
 
     async initChartsData(): Promise<AddonData> {
-        return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `get_sync_aggregations_from_elastic`).toPromise();
+        return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_sync_aggregations_from_elastic`, { TimeZoneOffset: this.getTimeZoneOffset() }).toPromise();
     }
 
     async initSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {
@@ -47,6 +47,10 @@ export class AddonService {
         this.filtersDistinctValues = await this.getSmartFiletrsDistinctValues(smartFiltersSearchBody);
 
         return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_internal_syncs_from_elastic`, searchBody).toPromise();
+    }
+
+    private getTimeZoneOffset() {
+        return (new Date().getTimezoneOffset()) * (-1); // offset in minutes
     }
 
     private getQueryParameters(params: IPepGenericListParams, searchAfter: any[],searchStringFields: string[], SmartFiltersSyncFields, SearchFields) {
