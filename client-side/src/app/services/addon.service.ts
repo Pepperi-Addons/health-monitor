@@ -17,7 +17,7 @@ export class AddonService {
     ) {}
 
     async initHealthMonitorDashaboardData(): Promise<AddonData> {
-        return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `health_monitor_dashboard`).toPromise();
+        return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `health_monitor_dashboard?time_zone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`).toPromise();
     }
 
     async initChartsData(): Promise<AddonData> {
