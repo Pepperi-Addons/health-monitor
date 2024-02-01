@@ -311,7 +311,7 @@ export async function health_monitor_dashboard(client: Client, request: Request)
         const timeZone = request.query.time_zone;
         const lastSyncResult = await monitorSettingsService.papiClient.get("/audit_logs?fields=Status.ID,ModificationDateTime&where=AuditInfo.JobMessageData.FunctionName ='sync'&page_size=1&order_by=ModificationDateTime desc");
         const lastSyncTime = new Date(lastSyncResult[0]["ModificationDateTime"]);
-        const time = lastSyncTime.toLocaleTimeString('en-US', {timeZone: timeZone}).split(" ")[0];
+        const time = lastSyncTime.toLocaleTimeString('en-US', {timeZone: timeZone, hour12: false});
         result.LastSync = { Time: time, Status: lastSyncResult[0]["Status.ID"] };
 
         const lastDay = new Date(Date.now() - 86400 * 1000);
