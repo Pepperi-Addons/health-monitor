@@ -10,19 +10,17 @@
                     <p class="desc color-dimmed">Pending Actions</p>
                     <p class="value bold">{{dashboardData?.PendingActions?.Count}}</p>
                 </div>
-            </div>
-            <ng-container>
-                <p class="body-md color-dimmed" *ngIf="syncEmpty === true && isLoaded === true">{{ 'Error_Loading_Data' | translate}}</p>
-                <div class="content row" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
-                    <div class="info-chart chart-background">
+                    <div class="info-chart chart-background" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
                         <p class="desc color-dimmed">Up time - {{ this.syncData?.UptimeSync?.dates }}</p>
                         <p class="value bold">{{uptimeValues?.[0]}} </p>
                     </div>
-                    <div class="info-chart chart-background">
+                    <div class="info-chart chart-background" [ngStyle]="{ visibility: this.syncData?.UptimeSync ? 'visible':'hidden'}">
                         <p class="desc color-dimmed">{{ 'Up_Time_Chart_This_Month' | translate}}</p>
                         <p class="value bold">{{uptimeValues?.[1]}}</p>
                     </div>
-                </div>
+            </div>
+            <ng-container>
+                <p class="body-md color-dimmed" *ngIf="syncEmpty === true && isLoaded === true">{{ 'Error_Loading_Data' | translate}}</p>
                 <div class="content row" [ngStyle]="{ visibility: this.syncData?.HourlySyncs ? 'visible':'hidden'}">
                     <div class="chart chart-background">
                         <p class="pep-border-bottom">{{ 'Hourly_Chart' | translate}}</p>
