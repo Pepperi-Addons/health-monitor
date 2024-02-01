@@ -87,7 +87,7 @@ export class InternalSyncLogsComponent implements OnInit {
       });
     },
     update: async (params: any) => {
-      let items = await this.addonService.initSyncData(params, this.searchAfter);
+      let items = await this.addonService.initInternalSyncData(params, this.searchAfter);
       this.searchAfter = items.searchAfter;
       this.size = items.size;
       this.items = items.data;
