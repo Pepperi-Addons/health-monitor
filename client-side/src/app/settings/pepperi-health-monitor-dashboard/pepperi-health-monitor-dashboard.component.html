@@ -33,6 +33,10 @@
                 <internal-sync-logs *ngIf="tabID == 3">
                 </internal-sync-logs>
             </mat-tab>
+            <mat-tab id="KPI " label="{{ 'KPI_Tab' | translate}}">
+                <kpi-dashboard *ngIf="tabID == 4">
+                </kpi-dashboard>
+            </mat-tab>
         </mat-tab-group>
     </ng-container>
 

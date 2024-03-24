@@ -16,7 +16,6 @@ export class SyncDashboardComponent implements OnInit {
   ctxHourlySync: any;
   ctxWeeklySync: any;
   ctxMonthlySync: any;
-  uptimeValues;
 
   isLoaded: boolean = false;
   syncEmpty: boolean = true;
@@ -50,7 +49,6 @@ export class SyncDashboardComponent implements OnInit {
       this.isLoaded = true;
       if (!this.syncEmpty) {
         this.loadData();
-        this.uptimeValues = Object.values(this.syncData?.UptimeSync.data);
       }
     });
   }
