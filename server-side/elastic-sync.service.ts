@@ -34,6 +34,10 @@ export class AuditDataLogSyncService {
         return (await this.getMonitorSettings()).SyncFailedCodeJobUUID;
     }
 
+    async getMonitorLevel() {
+        return (await this.getMonitorSettings()).MonitorLevel;
+    }
+
     async getUptimeSyncData() {
         const monitorSettings = await this.getMonitorSettings();
         const codeJobUUID = monitorSettings.SyncFailedCodeJobUUID;

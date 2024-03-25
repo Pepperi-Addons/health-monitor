@@ -20,6 +20,10 @@ export class AddonService {
         return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `health_monitor_dashboard?time_zone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`).toPromise();
     }
 
+    async getMonitorLevel(): Promise<number> {
+        return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `get_monitor_level_value`).toPromise();
+    }
+
     async initKpiTabData(): Promise<any> {
         return await this.addonService.getAddonApiCall(config.AddonUUID, 'api', `get_kpi_aggregations`).toPromise();
     }

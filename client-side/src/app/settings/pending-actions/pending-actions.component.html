@@ -1,0 +1,16 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-main-area>
+        <pep-generic-list 
+        [addPadding]="true" 
+        [dataSource]="listDataSource" 
+        selectionType="none" 
+        uuidMapping="UUID"
+        [showTopBar]="true" 
+        [inline]="false" 
+        noDataFoundMsg="No data">
+        </pep-generic-list>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>

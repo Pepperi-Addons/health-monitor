@@ -25,6 +25,7 @@ import { SyncDashboardModule } from '../sync-dashboard/sync-dashboard.module';
 import { SyncLogsModule } from '../sync-logs/sync-logs.module';
 import { InternalSyncLogsModule } from '../internal-sync-logs/internal-sync-logs.module';
 import { KPIDashboardModule } from '../kpi-dashboard/kpi-dashboard.module';
+import { PendingActionsModule } from '../pending-actions/pending-actions.module';
 
 const pepIcons = [
     pepIconSystemClose,
@@ -57,6 +58,7 @@ export const routes: Routes = [
         // PepButtonModule,
         // PepTextboxModule,
         PepGenericListModule,
+        PendingActionsModule,
         MatTabsModule,
         KPIDashboardModule,
         TranslateModule.forChild(),
