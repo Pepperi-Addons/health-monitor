@@ -37,13 +37,11 @@ export class SyncDashboardComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.addonService.initHealthMonitorDashaboardData().then(result => {
-      this.dashboardData = result;
-      this.dashboardData.LastSync.StatusName = result.LastSync.Status ? 'Success' : 'Delayed';
-      this.dashboardData.LastSync.Color = result.LastSync.Status ? 'inherit' : 'rgba(255, 89, 90, 1)';
-    });
-
     this.addonService.initChartsData().then((result: any) => {
+      this.dashboardData = result.DashboardData;
+      this.dashboardData.LastSync.StatusName = result.DashboardData.LastSync.Status ? 'Success' : 'Delayed';
+      this.dashboardData.LastSync.Color = result.DashboardData.LastSync.Status ? 'inherit' : 'rgba(255, 89, 90, 1)';
+
       this.syncData = result;
       this.syncEmpty = Object.keys(this.syncData).length === 0;
       this.isLoaded = true;
@@ -61,7 +59,7 @@ export class SyncDashboardComponent implements OnInit {
     }
 
     Object.entries(this.syncData).forEach(([key, value]: [string, any]) => {
-      if (key !== 'UptimeSync') {
+      if (key !== 'DashboardData') {
         if (key === 'HourlySyncs') {
           this.loadHourlySync();
         } else {

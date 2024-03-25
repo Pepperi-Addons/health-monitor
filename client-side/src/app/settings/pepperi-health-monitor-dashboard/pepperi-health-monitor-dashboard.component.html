@@ -9,35 +9,32 @@
     </ng-container>
 
     <ng-container pep-main-area>
-        <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
-            <mat-tab id="dashboard" label="{{ 'Health_Monitor_Dashboard_Tab1' | translate}}">
-                <sync-dashboard *ngIf="tabID == 0">
-                </sync-dashboard>
-            </mat-tab>
-            <mat-tab id="pendingActions " label="{{ 'Health_Monitor_Dashboard_Tab2' | translate}}">
-                <pep-generic-list
-                    [addPadding]="true"
-                    [dataSource]="listDataSource" 
-                    selectionType="none"
-                    uuidMapping="UUID"
-                    [showTopBar]="true" 
-                    [inline]="false" 
-                    noDataFoundMsg="No data">
-                </pep-generic-list>
-            </mat-tab>
-            <mat-tab id="syncLogs " label="{{ 'Sync_Log_Tab' | translate}}">
-                <sync-logs *ngIf="tabID == 2">
-                </sync-logs>
-            </mat-tab>
-            <mat-tab id="uptimeLogs " label="{{ 'Up_Time_Log' | translate}}">
-                <internal-sync-logs *ngIf="tabID == 3">
-                </internal-sync-logs>
-            </mat-tab>
-            <mat-tab id="KPI " label="{{ 'KPI_Tab' | translate}}">
-                <kpi-dashboard *ngIf="tabID == 4">
-                </kpi-dashboard>
-            </mat-tab>
-        </mat-tab-group>
+        <div *ngIf="isLoaded">
+            <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
+                <mat-tab id="dashboard" label="{{ 'Health_Monitor_Dashboard_Tab1' | translate}}">
+                    <sync-dashboard *ngIf="tabID == 0">
+                    </sync-dashboard>
+                </mat-tab>
+                <mat-tab id="pendingActions " label="{{ 'Health_Monitor_Dashboard_Tab2' | translate}}">
+                    <pending-actions *ngIf="tabID == 1">
+                    </pending-actions>
+                </mat-tab>
+                <mat-tab id="syncLogs " label="{{ 'Sync_Log_Tab' | translate}}">
+                    <sync-logs *ngIf="tabID == 2">
+                    </sync-logs>
+                </mat-tab>
+                <div *ngIf="this.monitorLevel !== 0">
+                    <mat-tab id="uptimeLogs " label="{{ 'Up_Time_Log' | translate}}">
+                        <internal-sync-logs *ngIf="tabID == 3">
+                        </internal-sync-logs>
+                    </mat-tab>
+                    <mat-tab id="KPI " label="{{ 'KPI_Tab' | translate}}">
+                        <kpi-dashboard *ngIf="tabID == 4">
+                        </kpi-dashboard>
+                    </mat-tab>
+                </div>
+            </mat-tab-group>
+        </div>
     </ng-container>
 
 </pep-page-layout>
