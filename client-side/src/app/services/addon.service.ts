@@ -29,7 +29,11 @@ export class AddonService {
     }
 
     async initChartsData(): Promise<AddonData> {
-        return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_sync_aggregations_from_elastic`, { TimeZoneOffset: this.getTimeZoneOffset() }).toPromise();
+        const body = {
+            TimeZoneOffset: this.getTimeZoneOffset(),
+            TimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+        return await this.addonService.postAddonApiCall(config.AddonUUID, 'api', `get_sync_aggregations_from_elastic`, body).toPromise();
     }
 
     async initSyncData(parameters: IPepGenericListParams, searchAfter: any[]) {

@@ -16,12 +16,16 @@ import { AuditDataLogSyncService } from './elastic-sync.service';
 const KEY_FOR_TOKEN = 'NagiosToken'
 
 export async function get_sync_aggregations_from_elastic(client: Client, request: Request) {
+    request.query.time_zone = request.body.TimeZone;
+    const syncData = await health_monitor_dashboard(client, request);
+
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
     return {
         "HourlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'], { DataType: 'HourlySyncs', Offset: request.body.TimeZoneOffset }),
         "LastDaySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'LastDaySyncs', Offset: request.body.TimeZoneOffset }),
         "WeeklySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'WeeklySyncs', Offset: request.body.TimeZoneOffset }),
-        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs', Offset: request.body.TimeZoneOffset })
+        "MonthlySyncs": await auditDataLogSyncService.getAuditDataLogSync(AUDIT_DATA_LOG_SYNC_FUNCTION_NAMES['syncAggregation'],  { DataType: 'MonthlySyncs', Offset: request.body.TimeZoneOffset }),
+        "DashboardData": syncData
     }
 }
 
