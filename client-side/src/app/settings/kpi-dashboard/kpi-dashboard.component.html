@@ -1,0 +1,19 @@
+<pep-page-layout [addPadding]="true">
+    <ng-container pep-main-area>
+        <div class="rows">
+            <div class="content row" [ngStyle]="{ visibility: this.uptimeValues ? 'visible':'hidden'}">
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">Up time - {{ this.dashboardData?.UptimeSync?.dates }}</p>
+                    <p class="value bold">{{this.uptimeValues?.[0]}} </p>
+                </div>
+                <div class="info-chart chart-background">
+                    <p class="desc color-dimmed">{{ 'Up_Time_Chart_This_Month' | translate}}</p>
+                    <p class="value bold">{{this.uptimeValues?.[1]}}</p>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+
+</pep-page-layout>
+
+<pep-size-detector></pep-size-detector>

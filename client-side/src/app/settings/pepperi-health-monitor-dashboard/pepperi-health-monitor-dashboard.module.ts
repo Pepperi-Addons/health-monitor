@@ -24,6 +24,7 @@ import { PepperiHealthMonitorDashboardComponent } from './pepperi-health-monitor
 import { SyncDashboardModule } from '../sync-dashboard/sync-dashboard.module';
 import { SyncLogsModule } from '../sync-logs/sync-logs.module';
 import { InternalSyncLogsModule } from '../internal-sync-logs/internal-sync-logs.module';
+import { KPIDashboardModule } from '../kpi-dashboard/kpi-dashboard.module';
 
 const pepIcons = [
     pepIconSystemClose,
@@ -57,6 +58,7 @@ export const routes: Routes = [
         // PepTextboxModule,
         PepGenericListModule,
         MatTabsModule,
+        KPIDashboardModule,
         TranslateModule.forChild(),
         RouterModule.forChild(routes)
     ],

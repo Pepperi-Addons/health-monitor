@@ -15,5 +15,6 @@
     "Daily_Chart": "Last 24h Sync status",
     "Weekly_Chart": "Weekly Sync Status",
     "Monthly_Chart": "Monthly Sync Status",
-    "Up_Time_Chart_This_Month": "Up time this month"
+    "Up_Time_Chart_This_Month": "Up time this month",
+    "KPI_Tab": "KPI"
 }
