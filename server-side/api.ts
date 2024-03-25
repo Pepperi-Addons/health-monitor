@@ -31,7 +31,7 @@ export async function get_sync_aggregations_from_elastic(client: Client, request
 
 export async function get_monitor_level_value(client: Client, request: Request) {
     const auditDataLogSyncService = new AuditDataLogSyncService(client);
-    return await auditDataLogSyncService.getMonitorLevel();
+    return await auditDataLogSyncService.getMonitorLevel(); 
 }
 
 export async function get_internal_syncs_from_elastic(client: Client, request: Request) {
