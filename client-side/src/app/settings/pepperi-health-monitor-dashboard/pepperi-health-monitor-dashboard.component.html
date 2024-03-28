@@ -9,8 +9,8 @@
     </ng-container>
 
     <ng-container pep-main-area>
-        <div *ngIf="isLoaded">
-            <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
+        <mat-tab-group [selectedIndex]="tabID" (selectedTabChange)="tabClick($event)">
+            <div *ngIf="isLoaded">
                 <mat-tab id="dashboard" label="{{ 'Health_Monitor_Dashboard_Tab1' | translate}}">
                     <sync-dashboard *ngIf="tabID == 0">
                     </sync-dashboard>
@@ -33,8 +33,8 @@
                         </kpi-dashboard>
                     </mat-tab>
                 </div>
-            </mat-tab-group>
-        </div>
+            </div>
+        </mat-tab-group>
     </ng-container>
 
 </pep-page-layout>
