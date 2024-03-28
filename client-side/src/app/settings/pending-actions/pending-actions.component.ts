@@ -52,7 +52,7 @@ export class PendingActionsComponent implements OnInit {
             },
             {
               FieldID: 'CreationDateTime',
-              Type: 'TextBox',
+              Type: 'DateAndTime',
               Title: 'Creation Date Time',
               Mandatory: true,
               ReadOnly: true
